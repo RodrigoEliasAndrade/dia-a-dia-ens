@@ -1,7 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Header from './components/Home/Header';
 import Calendar from './components/Home/Calendar';
-import StreakCounter from './components/Home/StreakCounter';
 import PCECards from './components/Home/PCECards';
 import BottomNav from './components/shared/BottomNav';
 import CardFlow from './components/OracaoConjugal/CardFlow';
@@ -21,12 +20,6 @@ function HomePage() {
   return (
     <div className="pb-24">
       <Header />
-      <StreakCounter
-        monthlyCount={conjugalData.monthlyCount}
-        currentStreak={conjugalData.currentStreak}
-        longestStreak={conjugalData.longestStreak}
-        totalCompletions={conjugalData.totalCompletions}
-      />
       <Calendar completedDates={getCompletedDates()} />
       <PCECards completedToday={completedToday} />
     </div>
