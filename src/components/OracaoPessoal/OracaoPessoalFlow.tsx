@@ -160,6 +160,68 @@ export default function OracaoPessoalFlow() {
     if (currentStep > 0) setCurrentStep(prev => prev - 1);
   };
 
+  // ─── GOSPEL TEXT FORMATTER ──────────────────────
+  // Parses inline verse numbers (e.g. "9Jesus", "10"Dois") into
+  // styled superscript numbers with verse-by-verse paragraph breaks.
+  const renderGospelText = (text: string) => {
+    // Regex: find 1-3 digit numbers directly followed by any non-space/non-digit
+    // character (letter, quote, etc). These are verse numbers embedded by the API.
+    // The number must be preceded by whitespace, punctuation, or start of string.
+    const verseRegex = /(?:^|[\s.!?;:,])(\d{1,3})(?=[^\s\d])/g;
+
+    const matches: { index: number; numLen: number; number: string }[] = [];
+    let m;
+    while ((m = verseRegex.exec(text)) !== null) {
+      const offset = m[0].length - m[1].length; // skip leading space/punct
+      matches.push({
+        index: m.index + offset,
+        numLen: m[1].length,
+        number: m[1],
+      });
+    }
+
+    if (matches.length === 0) {
+      return (
+        <p className="font-serif text-[17px] leading-[2] text-ens-text">
+          {text}
+        </p>
+      );
+    }
+
+    // Build verse segments
+    const verses: { number?: string; text: string }[] = [];
+
+    // Text before first verse number (e.g., "Naquele tempo,")
+    if (matches[0].index > 0) {
+      const intro = text.slice(0, matches[0].index).trim();
+      if (intro) verses.push({ text: intro });
+    }
+
+    for (let i = 0; i < matches.length; i++) {
+      const start = matches[i].index + matches[i].numLen;
+      const end = i < matches.length - 1 ? matches[i + 1].index : text.length;
+      const verseText = text.slice(start, end).trim();
+      if (verseText) {
+        verses.push({ number: matches[i].number, text: verseText });
+      }
+    }
+
+    return (
+      <div className="space-y-3">
+        {verses.map((verse, i) => (
+          <p key={i} className="font-serif text-[17px] leading-[2] text-ens-text">
+            {verse.number && (
+              <sup className="text-[11px] font-sans font-bold text-ens-gold mr-1 select-none">
+                {verse.number}
+              </sup>
+            )}
+            {verse.text}
+          </p>
+        ))}
+      </div>
+    );
+  };
+
   const renderTimerButton = (label: string, seconds: number) => (
     <div className="text-center mt-4">
       {!timerActive && timeLeft === 0 ? (
@@ -312,21 +374,18 @@ export default function OracaoPessoalFlow() {
     if (step.id === 'leitura') {
       return (
         <div className="space-y-5">
-          <div className="bg-ens-blue/5 rounded-xl p-4 text-center">
-            <p className="text-sm text-ens-blue font-medium">
-              Leia o Evangelho <strong>lentamente</strong>, em voz baixa
-            </p>
-            <p className="text-xs text-ens-text-light mt-1">
-              {selectedMethod === 'inaciana'
-                ? 'Prepare-se para entrar na cena com a imaginação.'
-                : selectedMethod === 'salesiana'
-                  ? 'Leia duas vezes. Na segunda, observe o que toca seu coração.'
-                  : 'Leia duas vezes. Na segunda, deixe uma palavra ou frase saltar aos seus olhos.'}
-            </p>
-          </div>
+          {/* Compact instruction — subtle, doesn't compete with Scripture */}
+          <p className="text-center text-sm text-ens-text-light">
+            Leia <strong className="text-ens-blue">lentamente</strong>, em voz baixa.{' '}
+            {selectedMethod === 'inaciana'
+              ? 'Prepare-se para entrar na cena.'
+              : selectedMethod === 'salesiana'
+                ? 'Na segunda leitura, observe o que toca seu coração.'
+                : 'Na segunda leitura, deixe uma palavra saltar aos seus olhos.'}
+          </p>
 
           {loading ? (
-            <div className="flex flex-col items-center py-8">
+            <div className="flex flex-col items-center py-10">
               <div className="animate-spin w-8 h-8 border-3 border-ens-blue border-t-transparent rounded-full" />
               <p className="text-sm text-ens-text-light mt-3">Carregando a Palavra...</p>
             </div>
@@ -339,24 +398,30 @@ export default function OracaoPessoalFlow() {
                 </div>
               )}
 
+              {/* Reference — prominent, with decorative divider */}
               {liturgy.evangelhoReferencia && (
-                <div className="text-center">
-                  <p className="text-xs text-ens-text-light font-medium">{liturgy.evangelhoReferencia}</p>
+                <div className="text-center space-y-1 py-2">
+                  <div className="flex items-center justify-center gap-3">
+                    <div className="h-px w-8 bg-ens-gold/40" />
+                    <p className="text-sm font-semibold text-ens-blue tracking-wide">
+                      {liturgy.evangelhoReferencia}
+                    </p>
+                    <div className="h-px w-8 bg-ens-gold/40" />
+                  </div>
                   {liturgy.evangelhoTitulo && (
-                    <p className="text-xs text-ens-gold mt-0.5">{liturgy.evangelhoTitulo}</p>
+                    <p className="text-xs text-ens-gold font-medium">{liturgy.evangelhoTitulo}</p>
                   )}
                 </div>
               )}
 
-              <div className="bg-ens-cream rounded-xl p-5 border border-gray-200 max-h-[50vh] overflow-y-auto">
-                <p className="text-ens-text text-sm leading-relaxed whitespace-pre-line">
-                  {liturgy.evangelho}
-                </p>
+              {/* Scripture text — the hero of the screen */}
+              <div className="rounded-xl px-5 py-6 bg-[#faf8f3] border-l-[3px] border-ens-gold/50">
+                {renderGospelText(liturgy.evangelho)}
               </div>
             </>
           ) : null}
 
-          <p className="text-center text-xs text-ens-text-light italic">
+          <p className="text-center text-xs text-ens-text-light italic pt-1">
             Não tenha pressa. Deus fala no ritmo do coração, não da mente.
           </p>
         </div>
