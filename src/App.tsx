@@ -7,6 +7,7 @@ import OracaoPessoalFlow from './components/OracaoPessoal/OracaoPessoalFlow';
 import CardFlow from './components/OracaoConjugal/CardFlow';
 import DeverSentarFlow from './components/DeverSentar/DeverSentarFlow';
 import RegraDeVidaFlow from './components/RegraDeVida/RegraDeVidaFlow';
+import RetiroAnualFlow from './components/RetiroAnual/RetiroAnualFlow';
 import { usePrayerTracking } from './hooks/usePrayerTracking';
 
 function HomePage() {
@@ -17,6 +18,7 @@ function HomePage() {
     'oracao-conjugal': isCompletedToday('conjugal'),
     'dever-sentar': false,
     'regra-vida': false,
+    'retiro-anual': false,
   };
 
   return (
@@ -52,6 +54,10 @@ function PCEsPage() {
         <div className="bg-white rounded-xl p-4 shadow-sm">
           <h3 className="font-semibold text-ens-blue">4. Regra de Vida 📖</h3>
           <p className="text-sm text-ens-text-light mt-1">Compromissos de crescimento espiritual</p>
+        </div>
+        <div className="bg-white rounded-xl p-4 shadow-sm">
+          <h3 className="font-semibold text-ens-blue">5. Retiro Anual ⛰️</h3>
+          <p className="text-sm text-ens-text-light mt-1">Tempo forte de encontro com Deus</p>
         </div>
       </div>
     </div>
@@ -133,6 +139,7 @@ export default function App() {
         <Route path="/oracao-conjugal" element={<CardFlow />} />
         <Route path="/dever-sentar" element={<DeverSentarFlow />} />
         <Route path="/regra-vida" element={<RegraDeVidaFlow />} />
+        <Route path="/retiro-anual" element={<RetiroAnualFlow />} />
       </Routes>
       <BottomNav />
     </BrowserRouter>

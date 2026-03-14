@@ -47,6 +47,12 @@ export interface RegraDeVidaData {
   notes?: string;
 }
 
+export interface RetiroAnualData {
+  lastCompleted: string;
+  yearCompleted: boolean;
+  notes?: string;
+}
+
 export interface LiturgyData {
   data: string;
   liturgia: string;
@@ -60,7 +66,7 @@ export interface LiturgyData {
   segundaLeitura?: string;
 }
 
-export type PCEType = 'oracao-pessoal' | 'oracao-conjugal' | 'dever-sentar' | 'regra-vida';
+export type PCEType = 'oracao-pessoal' | 'oracao-conjugal' | 'dever-sentar' | 'regra-vida' | 'retiro-anual';
 
 export interface PCECard {
   id: PCEType;

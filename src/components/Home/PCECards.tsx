@@ -35,6 +35,14 @@ const pceCards: PCECard[] = [
     frequency: 'Mensal',
     color: 'from-emerald-600 to-emerald-700',
   },
+  {
+    id: 'retiro-anual',
+    title: 'Retiro Anual',
+    subtitle: 'Tempo forte com Deus',
+    emoji: '⛰️',
+    frequency: 'Anual',
+    color: 'from-purple-600 to-purple-700',
+  },
 ];
 
 interface PCECardsProps {
@@ -53,6 +61,8 @@ export default function PCECards({ completedToday }: PCECardsProps) {
       navigate('/dever-sentar');
     } else if (id === 'regra-vida') {
       navigate('/regra-vida');
+    } else if (id === 'retiro-anual') {
+      navigate('/retiro-anual');
     }
   };
 

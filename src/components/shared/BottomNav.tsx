@@ -13,7 +13,7 @@ export default function BottomNav() {
   const navigate = useNavigate();
 
   // Hide nav during prayer flows
-  const flowPaths = ['/oracao-pessoal', '/oracao-conjugal', '/dever-sentar', '/regra-vida'];
+  const flowPaths = ['/oracao-pessoal', '/oracao-conjugal', '/dever-sentar', '/regra-vida', '/retiro-anual'];
   if (flowPaths.some(path => location.pathname.startsWith(path))) return null;
 
   return (

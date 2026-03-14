@@ -1,75 +1,108 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, BookOpen, Timer, Pause, Play } from 'lucide-react';
+import { ArrowLeft, Timer, Pause, Play, BookOpen } from 'lucide-react';
 import { useLiturgy } from '../../hooks/useLiturgy';
 import { usePrayerTracking } from '../../hooks/usePrayerTracking';
 
 /**
- * ORAÇÃO PESSOAL DIÁRIA — Lectio Divina
+ * ORAÇÃO PESSOAL DIÁRIA — Leitura Orante do Evangelho
  *
  * ENS Teaching: "A oração conjugal nasce da oração pessoal.
  * Não podemos dar ao outro o que não temos."
  * — Padre Henri Caffarel
  *
- * This is the FOUNDATION of the ENS spiritual life.
- * Each spouse needs their own personal encounter with God
- * before they can pray together as a couple.
+ * 3 MÉTODOS DE LEITURA ORANTE:
  *
- * Method: Lectio Divina (4 steps)
- * 1. LECTIO — Read the Word slowly
- * 2. MEDITATIO — Meditate on what strikes you
- * 3. ORATIO — Respond to God in prayer
- * 4. CONTEMPLATIO — Rest in God's presence in silence
+ * 1. LECTIO DIVINA (São Bento / Tradição Monástica)
+ *    O método mais antigo da Igreja — escutar Deus na Palavra.
+ *    Lectio → Meditatio → Oratio → Contemplatio
+ *
+ * 2. CONTEMPLAÇÃO INACIANA (Santo Inácio de Loyola)
+ *    Dos Exercícios Espirituais — entrar na cena do Evangelho
+ *    com a imaginação e todos os sentidos.
+ *
+ * 3. MEDITAÇÃO SALESIANA (São Francisco de Sales)
+ *    Da "Introdução à Vida Devota" — meditar ponto a ponto,
+ *    deixar surgir afetos e tomar uma resolução concreta.
  */
 
-const steps = [
+type MethodId = 'lectio-divina' | 'inaciana' | 'salesiana';
+
+interface Method {
+  id: MethodId;
+  emoji: string;
+  name: string;
+  saint: string;
+  saintYears: string;
+  origin: string;
+  description: string;
+  steps: { id: string; emoji: string; title: string; subtitle: string }[];
+}
+
+const methods: Method[] = [
   {
-    id: 'intro',
-    emoji: '🕯️',
-    title: 'Preparação',
-    subtitle: 'Silenciar o coração',
+    id: 'lectio-divina',
+    emoji: '📜',
+    name: 'Lectio Divina',
+    saint: 'São Bento de Núrsia',
+    saintYears: '480–547',
+    origin: 'Tradição Monástica',
+    description:
+      'O método mais antigo da Igreja para ler a Palavra de Deus. Nascido nos mosteiros, convida a escutar Deus que fala através das Escrituras com o coração, não apenas com a mente.',
+    steps: [
+      { id: 'meditatio', emoji: '💭', title: 'Meditatio', subtitle: 'Ruminar a Palavra no coração' },
+      { id: 'oratio', emoji: '🙏', title: 'Oratio', subtitle: 'Responder a Deus com o coração' },
+      { id: 'contemplatio', emoji: '✨', title: 'Contemplatio', subtitle: 'Repousar em Deus em silêncio' },
+    ],
   },
   {
-    id: 'lectio',
-    emoji: '📖',
-    title: 'Lectio — Leitura',
-    subtitle: 'Escutar a Palavra de Deus',
+    id: 'inaciana',
+    emoji: '🎭',
+    name: 'Contemplação Inaciana',
+    saint: 'Santo Inácio de Loyola',
+    saintYears: '1491–1556',
+    origin: 'Exercícios Espirituais',
+    description:
+      'Dos Exercícios Espirituais de Santo Inácio. Use a imaginação para entrar na cena do Evangelho — veja os lugares, ouça as palavras, sinta os cheiros. Torne-se uma personagem. Encontre Jesus pessoalmente.',
+    steps: [
+      { id: 'composicao', emoji: '🎨', title: 'Composição de Lugar', subtitle: 'Entrar na cena com a imaginação' },
+      { id: 'sentidos', emoji: '👁️', title: 'Sentidos Espirituais', subtitle: 'Ver, ouvir, sentir a cena' },
+      { id: 'coloquio', emoji: '💬', title: 'Colóquio com Jesus', subtitle: 'Conversar pessoalmente com Cristo' },
+    ],
   },
   {
-    id: 'meditatio',
-    emoji: '💭',
-    title: 'Meditatio — Meditação',
-    subtitle: 'O que Deus me diz?',
-  },
-  {
-    id: 'oratio',
-    emoji: '🙏',
-    title: 'Oratio — Oração',
-    subtitle: 'Minha resposta a Deus',
-  },
-  {
-    id: 'contemplatio',
-    emoji: '✨',
-    title: 'Contemplatio — Contemplação',
-    subtitle: 'Repousar em Deus',
-  },
-  {
-    id: 'closing',
-    emoji: '🕊️',
-    title: 'Envio',
-    subtitle: 'Levar a Palavra para o dia',
+    id: 'salesiana',
+    emoji: '🌹',
+    name: 'Meditação Salesiana',
+    saint: 'São Francisco de Sales',
+    saintYears: '1567–1622',
+    origin: 'Introdução à Vida Devota',
+    description:
+      'Da obra-prima "Introdução à Vida Devota". Um método gentil e prático: medite ponto a ponto, deixe surgir sentimentos santos, tome uma resolução concreta e leve uma frase — o "ramalhete espiritual" — para o dia todo.',
+    steps: [
+      { id: 'consideracoes', emoji: '🔍', title: 'Considerações', subtitle: 'Meditar a Palavra ponto a ponto' },
+      { id: 'afetos', emoji: '❤️‍🔥', title: 'Afetos e Resoluções', subtitle: 'Sentir e decidir concretamente' },
+      { id: 'ramalhete', emoji: '💐', title: 'Ramalhete Espiritual', subtitle: 'Uma frase para levar o dia todo' },
+    ],
   },
 ];
+
+// Common steps (before and after method-specific steps)
+const prepStep = { id: 'preparacao', emoji: '🕯️', title: 'Preparação', subtitle: 'Silenciar o coração' };
+const leituraStep = { id: 'leitura', emoji: '📖', title: 'Evangelho do Dia', subtitle: 'Escutar a Palavra de Deus' };
+const envioStep = { id: 'envio', emoji: '🕊️', title: 'Envio', subtitle: 'Levar a Palavra para o dia' };
 
 export default function OracaoPessoalFlow() {
   const navigate = useNavigate();
   const { liturgy, loading, isFromFallback } = useLiturgy();
   const { completePessoalPrayer } = usePrayerTracking();
+
+  const [selectedMethod, setSelectedMethod] = useState<MethodId | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
   const [startTime] = useState(Date.now());
   const [saved, setSaved] = useState(false);
 
-  // Silence timer for intro and contemplatio
+  // Silence timer
   const [timerActive, setTimerActive] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
   const intervalRef = useRef<number | null>(null);
@@ -103,8 +136,14 @@ export default function OracaoPessoalFlow() {
 
   const formatTime = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
 
-  const step = steps[currentStep];
-  const progress = ((currentStep + 1) / steps.length) * 100;
+  // Build steps array based on selected method
+  const method = methods.find(m => m.id === selectedMethod);
+  const allSteps = method
+    ? [prepStep, leituraStep, ...method.steps, envioStep]
+    : [];
+
+  const step = allSteps[currentStep];
+  const progress = allSteps.length > 0 ? ((currentStep + 1) / allSteps.length) * 100 : 0;
 
   const handleSave = () => {
     completePessoalPrayer();
@@ -113,16 +152,12 @@ export default function OracaoPessoalFlow() {
 
   const handleNext = () => {
     stopTimer();
-    if (currentStep < steps.length - 1) {
-      setCurrentStep(prev => prev + 1);
-    }
+    if (currentStep < allSteps.length - 1) setCurrentStep(prev => prev + 1);
   };
 
   const handlePrev = () => {
     stopTimer();
-    if (currentStep > 0) {
-      setCurrentStep(prev => prev - 1);
-    }
+    if (currentStep > 0) setCurrentStep(prev => prev - 1);
   };
 
   const renderTimerButton = (label: string, seconds: number) => (
@@ -157,141 +192,303 @@ export default function OracaoPessoalFlow() {
     </div>
   );
 
+  // ─── METHOD SELECTION SCREEN ───────────────────────────
+  if (!selectedMethod) {
+    return (
+      <div className="min-h-dvh bg-ens-cream flex flex-col animate-fade-in">
+        <div className="bg-ens-blue px-4 pt-3 pb-5">
+          <div className="flex items-center gap-3">
+            <button onClick={() => navigate('/')} className="text-white/70">
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div>
+              <h1 className="text-white font-bold text-lg">Leitura Orante do Evangelho</h1>
+              <p className="text-white/60 text-xs">Escolha como quer encontrar Deus hoje</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex-1 px-4 py-6 overflow-y-auto pb-8">
+          {/* Intro */}
+          <div className="bg-white rounded-2xl shadow-md p-5 mb-5">
+            <p className="text-sm text-ens-text leading-relaxed text-center">
+              A Igreja oferece <strong>vários caminhos</strong> para ler a Palavra de Deus.
+              Todos levam ao mesmo destino: um <strong>encontro pessoal com Cristo</strong>.
+            </p>
+            <p className="text-xs text-ens-text-light mt-2 text-center">
+              Escolha o método que fala ao seu coração hoje.
+              Você pode variar a cada dia.
+            </p>
+          </div>
+
+          {/* Method cards */}
+          <div className="space-y-4">
+            {methods.map(m => (
+              <button
+                key={m.id}
+                onClick={() => setSelectedMethod(m.id)}
+                className="w-full bg-white rounded-2xl shadow-md p-5 text-left transition-all active:scale-[0.98] border-2 border-transparent hover:border-ens-blue/20"
+              >
+                <div className="flex items-start gap-3 mb-3">
+                  <div className="text-3xl">{m.emoji}</div>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-ens-blue text-base">{m.name}</h3>
+                    <p className="text-xs text-ens-gold font-medium">{m.saint} ({m.saintYears})</p>
+                    <p className="text-xs text-ens-text-light">{m.origin}</p>
+                  </div>
+                </div>
+                <p className="text-sm text-ens-text leading-relaxed">{m.description}</p>
+                <div className="flex items-center gap-1.5 mt-3 flex-wrap">
+                  {m.steps.map(s => (
+                    <span key={s.id} className="text-xs px-2 py-1 rounded-full bg-ens-blue/5 text-ens-blue">
+                      {s.emoji} {s.title}
+                    </span>
+                  ))}
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {/* ENS quote */}
+          <div className="mt-5 bg-ens-blue/5 rounded-xl p-4 border-l-4 border-ens-blue">
+            <p className="text-xs text-ens-text italic">
+              "A oração pessoal é o alicerce. Sem ela, a oração conjugal é como uma casa
+              construída sobre a areia. Cada esposo precisa do seu encontro pessoal com Deus."
+            </p>
+            <p className="text-xs text-ens-text-light mt-1 text-right">— Padre Henri Caffarel</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── GUIDED FLOW (after method selection) ──────────────
+
   const renderStepContent = () => {
-    switch (step.id) {
-      case 'intro':
+    if (!step) return null;
+
+    // ─── COMMON: Preparação ────────────────────────
+    if (step.id === 'preparacao') {
+      return (
+        <div className="space-y-5">
+          <div className="bg-ens-gold/10 border border-ens-gold/30 rounded-xl p-5 text-center">
+            <p className="text-ens-text text-sm leading-relaxed">
+              Encontre um lugar tranquilo.<br />
+              Sente-se confortavelmente.<br />
+              Respire fundo três vezes.
+            </p>
+          </div>
+
+          <div className="bg-white border border-gray-200 rounded-xl p-5">
+            <p className="text-ens-text text-sm leading-relaxed italic text-center">
+              "Senhor, abre os meus ouvidos para escutar a Tua Palavra.
+              Abre o meu coração para acolhê-la.
+              Fala, Senhor, o Teu servo escuta."
+            </p>
+          </div>
+
+          <p className="text-center text-xs text-ens-text-light">
+            Faça o sinal da cruz e permaneça em silêncio
+          </p>
+
+          {renderTimerButton('Silêncio de 1 minuto', 60)}
+
+          <div className="bg-ens-cream rounded-xl p-4 border border-gray-200">
+            <p className="text-xs text-ens-text-light text-center">
+              Método escolhido: <strong className="text-ens-blue">{method?.emoji} {method?.name}</strong>
+            </p>
+            <button
+              onClick={() => { setSelectedMethod(null); setCurrentStep(0); stopTimer(); }}
+              className="block mx-auto mt-2 text-xs text-ens-blue underline"
+            >
+              Trocar método
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // ─── COMMON: Leitura do Evangelho ──────────────
+    if (step.id === 'leitura') {
+      return (
+        <div className="space-y-5">
+          <div className="bg-ens-blue/5 rounded-xl p-4 text-center">
+            <p className="text-sm text-ens-blue font-medium">
+              Leia o Evangelho <strong>lentamente</strong>, em voz baixa
+            </p>
+            <p className="text-xs text-ens-text-light mt-1">
+              {selectedMethod === 'inaciana'
+                ? 'Prepare-se para entrar na cena com a imaginação.'
+                : selectedMethod === 'salesiana'
+                  ? 'Leia duas vezes. Na segunda, observe o que toca seu coração.'
+                  : 'Leia duas vezes. Na segunda, deixe uma palavra ou frase saltar aos seus olhos.'}
+            </p>
+          </div>
+
+          {loading ? (
+            <div className="flex flex-col items-center py-8">
+              <div className="animate-spin w-8 h-8 border-3 border-ens-blue border-t-transparent rounded-full" />
+              <p className="text-sm text-ens-text-light mt-3">Carregando a Palavra...</p>
+            </div>
+          ) : liturgy ? (
+            <>
+              {isFromFallback && (
+                <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg p-2.5 text-xs text-amber-700">
+                  <BookOpen className="w-3.5 h-3.5 shrink-0" />
+                  <span>Evangelho de arquivo (API indisponível)</span>
+                </div>
+              )}
+
+              {liturgy.evangelhoReferencia && (
+                <div className="text-center">
+                  <p className="text-xs text-ens-text-light font-medium">{liturgy.evangelhoReferencia}</p>
+                  {liturgy.evangelhoTitulo && (
+                    <p className="text-xs text-ens-gold mt-0.5">{liturgy.evangelhoTitulo}</p>
+                  )}
+                </div>
+              )}
+
+              <div className="bg-ens-cream rounded-xl p-5 border border-gray-200 max-h-[50vh] overflow-y-auto">
+                <p className="text-ens-text text-sm leading-relaxed whitespace-pre-line">
+                  {liturgy.evangelho}
+                </p>
+              </div>
+            </>
+          ) : null}
+
+          <p className="text-center text-xs text-ens-text-light italic">
+            Não tenha pressa. Deus fala no ritmo do coração, não da mente.
+          </p>
+        </div>
+      );
+    }
+
+    // ─── COMMON: Envio (closing) ───────────────────
+    if (step.id === 'envio') {
+      return (
+        <div className="space-y-5">
+          <div className="bg-white border border-gray-200 rounded-xl p-5 text-center space-y-3">
+            <p className="text-ens-text text-sm leading-relaxed">
+              Antes de encerrar, guarde no coração <strong>uma palavra</strong> para levar consigo hoje.
+            </p>
+            <p className="text-ens-text-light text-sm">
+              Que ela te acompanhe no trabalho, em casa, com seu cônjuge.
+            </p>
+          </div>
+
+          <div className="bg-ens-cream rounded-xl p-5 border border-gray-200 text-center">
+            <p className="text-ens-text text-sm italic leading-relaxed">
+              "Senhor, obrigado(a) por este momento contigo.
+              Que a Tua Palavra ilumine o meu dia
+              e me ajude a amar melhor quem está ao meu lado. Amém."
+            </p>
+          </div>
+
+          <p className="text-center text-xs text-ens-text-light">Faça o sinal da cruz</p>
+
+          <div className="border-t border-gray-200 pt-5">
+            {!saved ? (
+              <button
+                onClick={handleSave}
+                className="w-full py-4 rounded-xl bg-ens-blue text-white font-semibold shadow-lg transition-all active:scale-[0.97]"
+              >
+                ✅ Oração Pessoal Concluída
+              </button>
+            ) : (
+              <div className="text-center py-3">
+                <div className="text-3xl mb-2">🕊️</div>
+                <p className="text-green-600 font-semibold">Glória a Deus!</p>
+                <p className="text-xs text-ens-text-light mt-1">
+                  Duração: {Math.round((Date.now() - startTime) / 60000)} minutos •
+                  Método: {method?.name}
+                </p>
+                <button
+                  onClick={() => navigate('/')}
+                  className="mt-4 w-full py-3 rounded-xl bg-ens-blue text-white font-semibold"
+                >
+                  Voltar ao Início
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="bg-ens-blue/5 rounded-xl p-4 border-l-4 border-ens-gold">
+            <p className="text-xs text-ens-text italic">
+              "Quem reza sozinho(a) com Deus, depois reza melhor com seu cônjuge.
+              A intimidade com Cristo alimenta a intimidade do casal."
+            </p>
+            <p className="text-xs text-ens-text-light mt-1 text-right">— Espiritualidade ENS</p>
+          </div>
+        </div>
+      );
+    }
+
+    // ─── LECTIO DIVINA steps ───────────────────────
+    if (selectedMethod === 'lectio-divina') {
+      if (step.id === 'meditatio') {
         return (
           <div className="space-y-5">
-            <div className="bg-ens-gold/10 border border-ens-gold/30 rounded-xl p-5 text-center">
-              <p className="text-ens-text text-sm leading-relaxed">
-                Encontre um lugar tranquilo.<br />
-                Sente-se confortavelmente.<br />
-                Respire fundo três vezes.
+            <div className="bg-ens-cream rounded-xl p-5 border border-gray-200">
+              <h3 className="font-semibold text-ens-blue text-sm mb-1">O que é a Meditatio?</h3>
+              <p className="text-xs text-ens-text-light leading-relaxed">
+                Os monges chamavam de "ruminar" — como quem mastiga lentamente
+                um alimento para extrair todo o sabor. Repita no coração a palavra que te tocou.
               </p>
             </div>
 
             <div className="bg-white border border-gray-200 rounded-xl p-5">
-              <p className="text-ens-text text-sm leading-relaxed italic text-center">
-                "Senhor, abre os meus ouvidos para escutar a Tua Palavra.
-                Abre o meu coração para acolhê-la.
-                Fala, Senhor, o Teu servo escuta."
-              </p>
-            </div>
-
-            <p className="text-center text-xs text-ens-text-light">
-              Faça o sinal da cruz e permaneça em silêncio por um momento
-            </p>
-
-            {renderTimerButton('Silêncio de 1 minuto', 60)}
-
-            <div className="bg-ens-blue/5 rounded-xl p-4 border-l-4 border-ens-blue">
-              <p className="text-xs text-ens-text-light italic">
-                💡 Padre Caffarel ensinava: "A oração pessoal é o alicerce.
-                Sem ela, a oração conjugal é como uma casa construída sobre a areia."
-              </p>
-            </div>
-          </div>
-        );
-
-      case 'lectio':
-        return (
-          <div className="space-y-5">
-            <div className="bg-ens-blue/5 rounded-xl p-4 text-center">
-              <p className="text-sm text-ens-blue font-medium">
-                📖 Leia a Palavra de Deus <span className="font-bold">lentamente</span>, em voz baixa
-              </p>
-              <p className="text-xs text-ens-text-light mt-1">
-                Não tenha pressa. Deus fala no silêncio.
-              </p>
-            </div>
-
-            {loading ? (
-              <div className="flex flex-col items-center py-8">
-                <div className="animate-spin w-8 h-8 border-3 border-ens-blue border-t-transparent rounded-full" />
-                <p className="text-sm text-ens-text-light mt-3">Carregando a Palavra...</p>
-              </div>
-            ) : liturgy ? (
-              <>
-                {isFromFallback && (
-                  <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg p-2.5 text-xs text-amber-700">
-                    <BookOpen className="w-3.5 h-3.5 shrink-0" />
-                    <span>Evangelho de arquivo (API indisponível)</span>
-                  </div>
-                )}
-                {liturgy.evangelhoReferencia && (
-                  <p className="text-center text-xs text-ens-text-light font-medium">
-                    {liturgy.evangelhoReferencia}
-                  </p>
-                )}
-                <div className="bg-ens-cream rounded-xl p-5 border border-gray-200">
-                  <p className="text-ens-text text-sm leading-relaxed whitespace-pre-line">
-                    {liturgy.evangelho}
-                  </p>
-                </div>
-              </>
-            ) : null}
-
-            <p className="text-center text-xs text-ens-text-light italic">
-              Releia uma segunda vez. Que palavra ou frase salta aos seus olhos?
-            </p>
-          </div>
-        );
-
-      case 'meditatio':
-        return (
-          <div className="space-y-5">
-            <div className="bg-ens-cream rounded-xl p-5 border border-gray-200">
               <h3 className="font-semibold text-ens-blue text-sm mb-3">Pergunte ao seu coração:</h3>
               <div className="space-y-3">
-                <div className="bg-white rounded-lg p-3 border border-gray-100">
-                  <p className="text-sm text-ens-text">❤️ Que palavra ou frase tocou o meu coração?</p>
+                <div className="bg-ens-cream rounded-lg p-3">
+                  <p className="text-sm text-ens-text">❤️ Que palavra ou frase <strong>tocou</strong> o meu coração?</p>
                 </div>
-                <div className="bg-white rounded-lg p-3 border border-gray-100">
-                  <p className="text-sm text-ens-text">🔦 O que Deus quer me dizer hoje, pessoalmente?</p>
+                <div className="bg-ens-cream rounded-lg p-3">
+                  <p className="text-sm text-ens-text">🔦 O que Deus quer <strong>me dizer</strong> hoje, pessoalmente?</p>
                 </div>
-                <div className="bg-white rounded-lg p-3 border border-gray-100">
-                  <p className="text-sm text-ens-text">🪞 Esta Palavra espelha algo da minha vida neste momento?</p>
+                <div className="bg-ens-cream rounded-lg p-3">
+                  <p className="text-sm text-ens-text">🪞 Esta Palavra <strong>espelha</strong> algo da minha vida agora?</p>
                 </div>
               </div>
             </div>
 
             <div className="bg-ens-blue/5 rounded-xl p-4 border-l-4 border-ens-gold">
               <p className="text-xs text-ens-text italic">
-                Não se trata de estudar ou analisar o texto, mas de deixar que a Palavra
-                entre no seu coração como uma semente. A meditação é o solo onde ela germina.
+                "Na meditação, não se trata de estudar ou analisar. É deixar que a Palavra
+                entre no coração como semente na terra boa." — Tradição Beneditina
               </p>
             </div>
 
             {renderTimerButton('Meditar por 3 minutos', 180)}
           </div>
         );
+      }
 
-      case 'oratio':
+      if (step.id === 'oratio') {
         return (
           <div className="space-y-5">
             <div className="bg-white border border-gray-200 rounded-xl p-5 text-center">
               <p className="text-ens-text text-sm leading-relaxed">
-                Agora é a <span className="font-bold text-ens-blue">sua vez de falar com Deus</span>.
+                Agora é a <strong className="text-ens-blue">sua vez de falar com Deus</strong>.
               </p>
               <p className="text-ens-text-light text-sm mt-2">
-                Responda à Palavra que ouviu. Fale com Deus como se fala com um amigo.
+                Responda à Palavra que ouviu. Fale com Ele como se fala com um amigo íntimo.
               </p>
             </div>
 
             <div className="bg-ens-cream rounded-xl p-5 border border-gray-200">
-              <h3 className="font-semibold text-ens-blue text-sm mb-3">Pode rezar assim:</h3>
+              <h3 className="font-semibold text-ens-blue text-sm mb-3">São Bento sugere:</h3>
               <div className="space-y-3">
                 <div className="bg-white rounded-lg p-3">
-                  <p className="text-sm text-ens-text">🙏 <strong>Agradeça</strong> — pelo que Deus lhe mostrou</p>
+                  <p className="text-sm text-ens-text">🙏 <strong>Agradeça</strong> — pelo que Deus revelou a você</p>
                 </div>
                 <div className="bg-white rounded-lg p-3">
                   <p className="text-sm text-ens-text">💔 <strong>Peça perdão</strong> — pelo que reconheceu em si</p>
                 </div>
                 <div className="bg-white rounded-lg p-3">
-                  <p className="text-sm text-ens-text">🙌 <strong>Peça graças</strong> — para o(a) seu/sua esposo(a), filhos, equipe</p>
+                  <p className="text-sm text-ens-text">🙌 <strong>Interceda</strong> — pelo seu cônjuge, filhos, equipe</p>
                 </div>
                 <div className="bg-white rounded-lg p-3">
-                  <p className="text-sm text-ens-text">🕊️ <strong>Entregue</strong> — o que te preocupa nas mãos de Deus</p>
+                  <p className="text-sm text-ens-text">🕊️ <strong>Entregue</strong> — suas preocupações nas mãos de Deus</p>
                 </div>
               </div>
             </div>
@@ -303,8 +500,9 @@ export default function OracaoPessoalFlow() {
             {renderTimerButton('Rezar por 3 minutos', 180)}
           </div>
         );
+      }
 
-      case 'contemplatio':
+      if (step.id === 'contemplatio') {
         return (
           <div className="space-y-5">
             <div className="bg-ens-gold/10 border border-ens-gold/30 rounded-xl p-6 text-center">
@@ -328,77 +526,328 @@ export default function OracaoPessoalFlow() {
 
             <div className="bg-ens-blue/5 rounded-xl p-4 border-l-4 border-ens-blue">
               <p className="text-xs text-ens-text-light italic">
-                A contemplação é o ponto mais alto da oração. Não se preocupe
-                se parecer "não acontecer nada". O silêncio diante de Deus nunca é vazio.
+                São Bento ensinava: a contemplação é o ápice da oração.
+                Não se preocupe se parecer "não acontecer nada".
+                O silêncio diante de Deus nunca é vazio — é plenitude.
               </p>
             </div>
           </div>
         );
+      }
+    }
 
-      case 'closing':
+    // ─── CONTEMPLAÇÃO INACIANA steps ───────────────
+    if (selectedMethod === 'inaciana') {
+      if (step.id === 'composicao') {
         return (
           <div className="space-y-5">
-            <div className="bg-white border border-gray-200 rounded-xl p-5 text-center space-y-3">
-              <p className="text-ens-text text-sm leading-relaxed">
-                Antes de encerrar, guarde no coração <strong>uma palavra</strong> para levar consigo hoje.
-              </p>
-              <p className="text-ens-text-light text-sm">
-                Que ela te acompanhe no trabalho, em casa, com seu cônjuge.
-              </p>
-            </div>
-
-            <div className="bg-ens-cream rounded-xl p-5 border border-gray-200 text-center">
-              <p className="text-ens-text text-sm italic leading-relaxed">
-                "Senhor, obrigado(a) por este momento contigo.
-                Que a Tua Palavra ilumine o meu dia
-                e me ajude a amar melhor quem está ao meu lado. Amém."
+            <div className="bg-ens-cream rounded-xl p-5 border border-gray-200">
+              <h3 className="font-semibold text-ens-blue text-sm mb-1">O que é a Composição de Lugar?</h3>
+              <p className="text-xs text-ens-text-light leading-relaxed">
+                Santo Inácio ensina: antes de meditar, <strong>entre na cena</strong> do Evangelho
+                com a imaginação. Não é fantasia — é deixar o Espírito Santo
+                usar seus sentidos para encontrar Cristo.
               </p>
             </div>
 
-            <p className="text-center text-xs text-ens-text-light">
-              Faça o sinal da cruz
-            </p>
-
-            <div className="border-t border-gray-200 pt-5">
-              {!saved ? (
-                <button
-                  onClick={handleSave}
-                  className="w-full py-4 rounded-xl bg-ens-blue text-white font-semibold shadow-lg transition-all active:scale-[0.97]"
-                >
-                  ✅ Oração Pessoal Concluída
-                </button>
-              ) : (
-                <div className="text-center py-3">
-                  <div className="text-3xl mb-2">🕊️</div>
-                  <p className="text-green-600 font-semibold">Glória a Deus!</p>
-                  <p className="text-xs text-ens-text-light mt-1">
-                    Duração: {Math.round((Date.now() - startTime) / 60000)} minutos
-                  </p>
-                  <button
-                    onClick={() => navigate('/')}
-                    className="mt-4 w-full py-3 rounded-xl bg-ens-blue text-white font-semibold"
-                  >
-                    Voltar ao Início
-                  </button>
+            <div className="bg-white border border-gray-200 rounded-xl p-5">
+              <h3 className="font-semibold text-ens-blue text-sm mb-3">Imagine a cena:</h3>
+              <div className="space-y-3">
+                <div className="bg-ens-cream rounded-lg p-3">
+                  <p className="text-sm text-ens-text">📍 <strong>Onde</strong> acontece? Como é o lugar? (uma casa, um campo, o templo, o lago...)</p>
                 </div>
-              )}
+                <div className="bg-ens-cream rounded-lg p-3">
+                  <p className="text-sm text-ens-text">👥 <strong>Quem</strong> está presente? Como são seus rostos, gestos, postura?</p>
+                </div>
+                <div className="bg-ens-cream rounded-lg p-3">
+                  <p className="text-sm text-ens-text">🕐 <strong>Quando</strong> — é dia, noite? Faz calor, frio? Há barulho ou silêncio?</p>
+                </div>
+                <div className="bg-ens-cream rounded-lg p-3">
+                  <p className="text-sm text-ens-text">🧑 <strong>Onde estou eu?</strong> Eu sou uma das personagens? Um observador? Estou ao lado de Jesus?</p>
+                </div>
+              </div>
             </div>
 
             <div className="bg-ens-blue/5 rounded-xl p-4 border-l-4 border-ens-gold">
               <p className="text-xs text-ens-text italic">
-                "Quem reza sozinho(a) com Deus, depois reza melhor com seu cônjuge.
-                A intimidade com Cristo alimenta a intimidade do casal."
+                "Não se trata de 'inventar' coisas, mas de deixar que o Espírito Santo
+                ilumine a sua imaginação para que o Evangelho se torne vivo, real,
+                presente — aqui e agora." — Santo Inácio de Loyola
               </p>
-              <p className="text-xs text-ens-text-light mt-1 text-right">— Espiritualidade ENS</p>
+            </div>
+
+            {renderTimerButton('Imaginar por 3 minutos', 180)}
+          </div>
+        );
+      }
+
+      if (step.id === 'sentidos') {
+        return (
+          <div className="space-y-5">
+            <div className="bg-ens-gold/10 border border-ens-gold/30 rounded-xl p-4 text-center">
+              <p className="text-sm text-ens-text font-medium">
+                Agora use os <strong>cinco sentidos da alma</strong>
+              </p>
+              <p className="text-xs text-ens-text-light mt-1">
+                Mergulhe mais fundo na cena. Deus te espera lá dentro.
+              </p>
+            </div>
+
+            <div className="bg-white border border-gray-200 rounded-xl p-5">
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="text-xl">👁️</div>
+                  <div>
+                    <p className="text-sm font-medium text-ens-blue">Ver</p>
+                    <p className="text-xs text-ens-text">O que vejo? Os rostos, as cores, os gestos de Jesus...</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="text-xl">👂</div>
+                  <div>
+                    <p className="text-sm font-medium text-ens-blue">Ouvir</p>
+                    <p className="text-xs text-ens-text">O que ouço? As palavras de Jesus, o tom de voz, os sons ao redor...</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="text-xl">🫁</div>
+                  <div>
+                    <p className="text-sm font-medium text-ens-blue">Sentir</p>
+                    <p className="text-xs text-ens-text">O que sinto no corpo? O vento, o cheiro do pão, o calor do sol...</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="text-xl">💗</div>
+                  <div>
+                    <p className="text-sm font-medium text-ens-blue">Experimentar</p>
+                    <p className="text-xs text-ens-text">O que acontece no meu coração? Paz, alegria, consolação, inquietação?</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-ens-blue/5 rounded-xl p-4 border-l-4 border-ens-blue">
+              <p className="text-xs text-ens-text-light italic">
+                Santo Inácio chama atenção para os "movimentos interiores": consolação (paz, alegria,
+                proximidade de Deus) e desolação (tristeza, inquietude, distância). Ambos são
+                matéria de oração.
+              </p>
+            </div>
+
+            {renderTimerButton('Contemplar por 3 minutos', 180)}
+          </div>
+        );
+      }
+
+      if (step.id === 'coloquio') {
+        return (
+          <div className="space-y-5">
+            <div className="bg-white border border-gray-200 rounded-xl p-5 text-center">
+              <p className="text-ens-text text-sm leading-relaxed">
+                Agora <strong className="text-ens-blue">converse pessoalmente com Jesus</strong>.
+              </p>
+              <p className="text-ens-text-light text-sm mt-2">
+                Fale com Ele como um amigo fala com outro amigo,
+                ou como um filho fala com o Pai.
+              </p>
+            </div>
+
+            <div className="bg-ens-cream rounded-xl p-5 border border-gray-200">
+              <h3 className="font-semibold text-ens-blue text-sm mb-3">No Colóquio, você pode:</h3>
+              <div className="space-y-3">
+                <div className="bg-white rounded-lg p-3">
+                  <p className="text-sm text-ens-text">🗣️ Contar a Jesus o que <strong>sentiu</strong> durante a contemplação</p>
+                </div>
+                <div className="bg-white rounded-lg p-3">
+                  <p className="text-sm text-ens-text">❓ Fazer <strong>perguntas</strong> a Ele — "Senhor, o que queres de mim?"</p>
+                </div>
+                <div className="bg-white rounded-lg p-3">
+                  <p className="text-sm text-ens-text">🙏 <strong>Pedir graças</strong> para seu casamento, filhos, equipe</p>
+                </div>
+                <div className="bg-white rounded-lg p-3">
+                  <p className="text-sm text-ens-text">🤲 <strong>Oferecer</strong> seu dia, suas lutas, seu amor conjugal</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-ens-blue/5 rounded-xl p-4 border-l-4 border-ens-gold">
+              <p className="text-xs text-ens-text italic">
+                "O colóquio se faz propriamente como um amigo fala a outro,
+                ou como um servo ao seu senhor: ora pedindo alguma graça,
+                ora acusando-se de algum mal feito, ora comunicando suas coisas
+                e pedindo conselho sobre elas."
+              </p>
+              <p className="text-xs text-ens-text-light mt-1 text-right">— Santo Inácio, Exercícios Espirituais §54</p>
+            </div>
+
+            {renderTimerButton('Colóquio de 3 minutos', 180)}
+          </div>
+        );
+      }
+    }
+
+    // ─── MEDITAÇÃO SALESIANA steps ─────────────────
+    if (selectedMethod === 'salesiana') {
+      if (step.id === 'consideracoes') {
+        return (
+          <div className="space-y-5">
+            <div className="bg-ens-cream rounded-xl p-5 border border-gray-200">
+              <h3 className="font-semibold text-ens-blue text-sm mb-1">O que são as Considerações?</h3>
+              <p className="text-xs text-ens-text-light leading-relaxed">
+                São Francisco de Sales ensina: tome cada ponto do texto e reflita
+                <strong> com calma</strong>. Não precisa refletir sobre tudo — se um
+                ponto toca seu coração, fique nele. "Como as abelhas que não
+                passam de flor em flor, mas se demoram onde encontram mel."
+              </p>
+            </div>
+
+            <div className="bg-white border border-gray-200 rounded-xl p-5">
+              <h3 className="font-semibold text-ens-blue text-sm mb-3">Considere ponto a ponto:</h3>
+              <div className="space-y-3">
+                <div className="bg-ens-cream rounded-lg p-3">
+                  <p className="text-sm text-ens-text">1️⃣ <strong>Quem</strong> está falando ou agindo neste texto? O que faz ou diz?</p>
+                </div>
+                <div className="bg-ens-cream rounded-lg p-3">
+                  <p className="text-sm text-ens-text">2️⃣ <strong>Por quê?</strong> Qual a intenção, o ensinamento por trás?</p>
+                </div>
+                <div className="bg-ens-cream rounded-lg p-3">
+                  <p className="text-sm text-ens-text">3️⃣ <strong>Para mim</strong> — como isso se aplica à minha vida hoje?</p>
+                </div>
+                <div className="bg-ens-cream rounded-lg p-3">
+                  <p className="text-sm text-ens-text">4️⃣ <strong>Para o meu casal</strong> — o que isso diz sobre o meu amor conjugal?</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-ens-blue/5 rounded-xl p-4 border-l-4 border-ens-gold">
+              <p className="text-xs text-ens-text italic">
+                "Não vos apresseis. Se encontrardes suficiente matéria, sabor e consolação
+                numa das considerações, detende-vos aí sem passar adiante,
+                fazendo como as abelhas, que não deixam a flor enquanto encontram mel."
+              </p>
+              <p className="text-xs text-ens-text-light mt-1 text-right">— São Francisco de Sales, Vida Devota II,6</p>
+            </div>
+
+            {renderTimerButton('Considerar por 3 minutos', 180)}
+          </div>
+        );
+      }
+
+      if (step.id === 'afetos') {
+        return (
+          <div className="space-y-5">
+            <div className="bg-ens-gold/10 border border-ens-gold/30 rounded-xl p-4">
+              <h3 className="font-semibold text-ens-blue text-sm mb-1">Afetos e Resoluções</h3>
+              <p className="text-xs text-ens-text leading-relaxed">
+                São Francisco de Sales distingue: os <strong>afetos</strong> são os sentimentos santos
+                que surgem da meditação. As <strong>resoluções</strong> são decisões concretas
+                para hoje. Sem resolução, a meditação fica no ar.
+              </p>
+            </div>
+
+            <div className="bg-white border border-gray-200 rounded-xl p-5">
+              <h3 className="font-semibold text-ens-blue text-sm mb-3">Que afetos surgiram?</h3>
+              <div className="space-y-2">
+                <div className="bg-ens-cream rounded-lg p-3">
+                  <p className="text-sm text-ens-text">💝 Amor a Deus — desejo de agradá-Lo, servi-Lo</p>
+                </div>
+                <div className="bg-ens-cream rounded-lg p-3">
+                  <p className="text-sm text-ens-text">😢 Arrependimento — reconhecer onde falhei</p>
+                </div>
+                <div className="bg-ens-cream rounded-lg p-3">
+                  <p className="text-sm text-ens-text">🔥 Desejo — de ser melhor esposo(a), pai/mãe, equipista</p>
+                </div>
+                <div className="bg-ens-cream rounded-lg p-3">
+                  <p className="text-sm text-ens-text">🙏 Confiança — entregar a Deus o que não consigo resolver</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-ens-blue/5 rounded-xl p-5 border border-ens-blue/20">
+              <h3 className="font-semibold text-ens-blue text-sm mb-3">⚡ Minha Resolução Concreta:</h3>
+              <p className="text-xs text-ens-text mb-3">
+                Tome uma decisão <strong>específica, prática e realizável hoje</strong>. Exemplos:
+              </p>
+              <div className="space-y-2 text-xs text-ens-text-light">
+                <p>• "Hoje vou dizer ao meu cônjuge algo que admiro nele(a)"</p>
+                <p>• "Vou perdoar aquela mágoa que carrego"</p>
+                <p>• "Vou servir em algo concreto sem que me peçam"</p>
+                <p>• "Não vou reclamar, mesmo quando tiver razão"</p>
+              </div>
+            </div>
+
+            <div className="bg-ens-blue/5 rounded-xl p-4 border-l-4 border-ens-gold">
+              <p className="text-xs text-ens-text italic">
+                "A meditação sem resolução é como uma nuvem sem chuva.
+                Tome resoluções particulares e concretas, não gerais e vagas."
+              </p>
+              <p className="text-xs text-ens-text-light mt-1 text-right">— São Francisco de Sales</p>
             </div>
           </div>
         );
+      }
+
+      if (step.id === 'ramalhete') {
+        return (
+          <div className="space-y-5">
+            <div className="bg-ens-gold/10 border border-ens-gold/30 rounded-xl p-5 text-center">
+              <div className="text-3xl mb-2">💐</div>
+              <h3 className="font-semibold text-ens-blue text-base">O Ramalhete Espiritual</h3>
+              <p className="text-sm text-ens-text mt-2 leading-relaxed">
+                São Francisco de Sales inventou esta prática bela:
+                ao final da oração, escolha <strong>uma frase, uma palavra,
+                uma imagem</strong> da meditação e leve-a consigo o dia todo.
+              </p>
+            </div>
+
+            <div className="bg-white border border-gray-200 rounded-xl p-5">
+              <p className="text-ens-text text-sm leading-relaxed text-center">
+                Como quem colhe um ramalhete de flores num jardim
+                e o leva para perfumar a casa, leve esta palavra
+                para perfumar as horas do seu dia.
+              </p>
+            </div>
+
+            <div className="bg-ens-cream rounded-xl p-5 border border-gray-200">
+              <h3 className="font-semibold text-ens-blue text-sm mb-3 text-center">Como usar o Ramalhete:</h3>
+              <div className="space-y-3">
+                <div className="bg-white rounded-lg p-3">
+                  <p className="text-sm text-ens-text">🌅 <strong>De manhã</strong> — repita a frase ao começar o dia</p>
+                </div>
+                <div className="bg-white rounded-lg p-3">
+                  <p className="text-sm text-ens-text">🕐 <strong>Ao longo do dia</strong> — nas pausas, no trânsito, na espera</p>
+                </div>
+                <div className="bg-white rounded-lg p-3">
+                  <p className="text-sm text-ens-text">💑 <strong>Com seu cônjuge</strong> — partilhe a frase na oração conjugal</p>
+                </div>
+                <div className="bg-white rounded-lg p-3">
+                  <p className="text-sm text-ens-text">🌙 <strong>À noite</strong> — recorde a frase antes de dormir</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-ens-blue/5 rounded-xl p-4 border-l-4 border-ens-blue">
+              <p className="text-xs text-ens-text italic">
+                "Quem passeou por um belo jardim não sai de bom grado sem levar
+                quatro ou cinco flores para cheirá-las e conservá-las o resto do dia.
+                Assim, devemos colher, ao sair da meditação, um ou dois pontos
+                que mais nos tocaram, para recordá-los durante o dia."
+              </p>
+              <p className="text-xs text-ens-text-light mt-1 text-right">— São Francisco de Sales, Vida Devota II,7</p>
+            </div>
+
+            {renderTimerButton('Silêncio de 1 minuto', 60)}
+          </div>
+        );
+      }
     }
+
+    return null;
   };
 
   return (
     <div className="min-h-dvh bg-ens-cream flex flex-col animate-fade-in">
-      {/* Header */}
+      {/* Header with progress */}
       <div className="bg-ens-blue px-4 pt-3 pb-4">
         <div className="flex items-center gap-3 mb-2">
           <button onClick={() => navigate('/')} className="text-white/70">
@@ -406,7 +855,7 @@ export default function OracaoPessoalFlow() {
           </button>
           <div className="flex-1">
             <div className="flex items-center justify-between text-white/70 text-xs">
-              <span>{step.title}</span>
+              <span>{method?.emoji} {step?.title}</span>
               <span>{Math.round(progress)}%</span>
             </div>
             <div className="w-full bg-white/20 rounded-full h-1.5 mt-1">
@@ -423,16 +872,16 @@ export default function OracaoPessoalFlow() {
       <div className="flex-1 px-4 py-6 overflow-y-auto pb-28">
         <div className="bg-white rounded-2xl shadow-md p-6">
           <div className="text-center mb-5">
-            <div className="text-4xl mb-2">{step.emoji}</div>
-            <h2 className="text-xl font-bold text-ens-blue">{step.title}</h2>
-            <p className="text-sm text-ens-text-light mt-1">{step.subtitle}</p>
+            <div className="text-4xl mb-2">{step?.emoji}</div>
+            <h2 className="text-xl font-bold text-ens-blue">{step?.title}</h2>
+            <p className="text-sm text-ens-text-light mt-1">{step?.subtitle}</p>
           </div>
           {renderStepContent()}
         </div>
       </div>
 
       {/* Navigation */}
-      {step.id !== 'closing' && (
+      {step?.id !== 'envio' && (
         <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[600px] bg-white border-t border-gray-200 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
           <div className="flex gap-3">
             {currentStep > 0 && (
