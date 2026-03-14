@@ -8,7 +8,7 @@ import DeverSentarFlow from './components/DeverSentar/DeverSentarFlow';
 import { usePrayerTracking } from './hooks/usePrayerTracking';
 
 function HomePage() {
-  const { conjugalData, isCompletedToday, getCompletedDates } = usePrayerTracking();
+  const { isCompletedToday, getCompletedDates } = usePrayerTracking();
 
   const completedToday: Record<string, boolean> = {
     'oracao-pessoal': isCompletedToday('pessoal'),
