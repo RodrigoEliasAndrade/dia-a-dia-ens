@@ -8,6 +8,7 @@ import CardFlow from './components/OracaoConjugal/CardFlow';
 import DeverSentarFlow from './components/DeverSentar/DeverSentarFlow';
 import RegraDeVidaFlow from './components/RegraDeVida/RegraDeVidaFlow';
 import RetiroAnualFlow from './components/RetiroAnual/RetiroAnualFlow';
+import DiarioPage from './components/Diario/DiarioPage';
 import { usePrayerTracking } from './hooks/usePrayerTracking';
 
 function HomePage() {
@@ -64,39 +65,7 @@ function PCEsPage() {
   );
 }
 
-function DiarioPage() {
-  const { conjugalData } = usePrayerTracking();
-  const recentCompletions = [...conjugalData.completions].reverse().slice(0, 10);
-
-  return (
-    <div className="pb-24 px-4 pt-16">
-      <h1 className="text-xl font-bold text-ens-blue mb-4">Diário de Oração</h1>
-      {recentCompletions.length === 0 ? (
-        <div className="text-center py-12">
-          <div className="text-4xl mb-3">📖</div>
-          <p className="text-ens-text-light">Nenhuma oração registrada ainda.</p>
-          <p className="text-sm text-ens-text-light mt-1">Comece sua oração conjugal hoje!</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {recentCompletions.map((entry, i) => (
-            <div key={i} className="bg-white rounded-xl p-4 shadow-sm">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-semibold text-ens-blue">{entry.date}</span>
-                <span className="text-xs text-ens-text-light">{entry.duration} min</span>
-              </div>
-              {entry.journalEntry ? (
-                <p className="text-sm text-ens-text">{entry.journalEntry}</p>
-              ) : (
-                <p className="text-sm text-ens-text-light italic">Sem anotações</p>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
+// DiarioPage is now imported from ./components/Diario/DiarioPage
 
 function CasalPage() {
   const { conjugalData } = usePrayerTracking();

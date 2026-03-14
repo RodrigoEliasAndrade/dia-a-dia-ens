@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Timer, Pause, Play, BookOpen } from 'lucide-react';
 import { useLiturgy } from '../../hooks/useLiturgy';
 import { usePrayerTracking } from '../../hooks/usePrayerTracking';
+import { useDiario } from '../../hooks/useDiario';
+import { format } from 'date-fns';
 
 /**
  * ORAÇÃO PESSOAL DIÁRIA — Leitura Orante do Evangelho
@@ -96,11 +98,13 @@ export default function OracaoPessoalFlow() {
   const navigate = useNavigate();
   const { liturgy, loading, isFromFallback } = useLiturgy();
   const { completePessoalPrayer } = usePrayerTracking();
+  const { addEntry } = useDiario();
 
   const [selectedMethod, setSelectedMethod] = useState<MethodId | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
   const [startTime] = useState(Date.now());
   const [saved, setSaved] = useState(false);
+  const [diarioNotes, setDiarioNotes] = useState('');
 
   // Silence timer
   const [timerActive, setTimerActive] = useState(false);
@@ -147,6 +151,20 @@ export default function OracaoPessoalFlow() {
 
   const handleSave = () => {
     completePessoalPrayer();
+
+    // Save diary entry (even if notes are empty — records the method & reference)
+    if (method) {
+      addEntry({
+        date: format(new Date(), 'yyyy-MM-dd'),
+        method: method.id,
+        methodName: method.name,
+        methodEmoji: method.emoji,
+        gospelReference: liturgy?.evangelhoReferencia || '',
+        notes: diarioNotes.trim(),
+        duration: Math.round((Date.now() - startTime) / 60000),
+      });
+    }
+
     setSaved(true);
   };
 
@@ -432,12 +450,37 @@ export default function OracaoPessoalFlow() {
     if (step.id === 'envio') {
       return (
         <div className="space-y-5">
+          {/* Diary / Reflection Notes */}
+          <div className="bg-[#faf8f3] rounded-xl p-5 border-l-[3px] border-ens-gold/50">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-lg">📝</span>
+              <h3 className="font-semibold text-ens-blue text-sm">Meu Diário de Oração</h3>
+            </div>
+            <p className="text-xs text-ens-text-light mb-3">
+              O que Deus te disse hoje? Que palavra tocou seu coração?
+              Que sentimento, decisão ou graça quer guardar?
+            </p>
+            <textarea
+              value={diarioNotes}
+              onChange={e => setDiarioNotes(e.target.value)}
+              placeholder={
+                selectedMethod === 'lectio-divina'
+                  ? 'A palavra que me tocou foi... Deus me disse que...'
+                  : selectedMethod === 'inaciana'
+                    ? 'Na cena do Evangelho, eu vi... senti... Jesus me disse...'
+                    : 'Minha resolução de hoje é... O ramalhete que levo é...'
+              }
+              rows={4}
+              className="w-full p-3.5 rounded-xl border border-gray-200 bg-white text-sm text-ens-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-ens-gold/40 resize-none leading-relaxed"
+            />
+            <p className="text-[11px] text-ens-text-light mt-2 text-center italic">
+              Suas anotações ficam salvas no Diário. Você pode reler a qualquer momento.
+            </p>
+          </div>
+
           <div className="bg-white border border-gray-200 rounded-xl p-5 text-center space-y-3">
             <p className="text-ens-text text-sm leading-relaxed">
-              Antes de encerrar, guarde no coração <strong>uma palavra</strong> para levar consigo hoje.
-            </p>
-            <p className="text-ens-text-light text-sm">
-              Que ela te acompanhe no trabalho, em casa, com seu cônjuge.
+              Guarde no coração <strong>uma palavra</strong> para levar consigo hoje.
             </p>
           </div>
 
@@ -467,6 +510,9 @@ export default function OracaoPessoalFlow() {
                   Duração: {Math.round((Date.now() - startTime) / 60000)} minutos •
                   Método: {method?.name}
                 </p>
+                {diarioNotes.trim() && (
+                  <p className="text-xs text-ens-gold mt-1">📝 Anotação salva no Diário</p>
+                )}
                 <button
                   onClick={() => navigate('/')}
                   className="mt-4 w-full py-3 rounded-xl bg-ens-blue text-white font-semibold"
