@@ -45,12 +45,15 @@ export default function PCECards({ completedToday }: PCECardsProps) {
   const navigate = useNavigate();
 
   const handleCardClick = (id: string) => {
-    if (id === 'oracao-conjugal') {
+    if (id === 'oracao-pessoal') {
+      navigate('/oracao-pessoal');
+    } else if (id === 'oracao-conjugal') {
       navigate('/oracao-conjugal');
     } else if (id === 'dever-sentar') {
       navigate('/dever-sentar');
+    } else if (id === 'regra-vida') {
+      navigate('/regra-vida');
     }
-    // Other PCEs can be added later
   };
 
   return (

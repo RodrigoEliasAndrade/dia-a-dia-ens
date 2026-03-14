@@ -3,8 +3,10 @@ import Header from './components/Home/Header';
 import Calendar from './components/Home/Calendar';
 import PCECards from './components/Home/PCECards';
 import BottomNav from './components/shared/BottomNav';
+import OracaoPessoalFlow from './components/OracaoPessoal/OracaoPessoalFlow';
 import CardFlow from './components/OracaoConjugal/CardFlow';
 import DeverSentarFlow from './components/DeverSentar/DeverSentarFlow';
+import RegraDeVidaFlow from './components/RegraDeVida/RegraDeVidaFlow';
 import { usePrayerTracking } from './hooks/usePrayerTracking';
 
 function HomePage() {
@@ -127,8 +129,10 @@ export default function App() {
         <Route path="/pces" element={<PCEsPage />} />
         <Route path="/diario" element={<DiarioPage />} />
         <Route path="/casal" element={<CasalPage />} />
+        <Route path="/oracao-pessoal" element={<OracaoPessoalFlow />} />
         <Route path="/oracao-conjugal" element={<CardFlow />} />
         <Route path="/dever-sentar" element={<DeverSentarFlow />} />
+        <Route path="/regra-vida" element={<RegraDeVidaFlow />} />
       </Routes>
       <BottomNav />
     </BrowserRouter>

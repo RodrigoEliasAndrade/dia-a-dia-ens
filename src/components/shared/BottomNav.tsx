@@ -13,7 +13,8 @@ export default function BottomNav() {
   const navigate = useNavigate();
 
   // Hide nav during prayer flows
-  if (location.pathname.startsWith('/oracao-conjugal')) return null;
+  const flowPaths = ['/oracao-pessoal', '/oracao-conjugal', '/dever-sentar', '/regra-vida'];
+  if (flowPaths.some(path => location.pathname.startsWith(path))) return null;
 
   return (
     <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[600px] bg-white border-t border-gray-200 z-50">
