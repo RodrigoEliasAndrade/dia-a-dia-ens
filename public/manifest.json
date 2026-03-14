@@ -2,18 +2,18 @@
   "name": "ENS Dia a Dia",
   "short_name": "ENS",
   "description": "Companheiro digital de oração para casais ENS",
-  "start_url": "/ens-dia-a-dia/",
+  "start_url": "/dia-a-dia-ens/",
   "display": "standalone",
   "background_color": "#f5f5f0",
   "theme_color": "#2c3e6b",
   "icons": [
     {
-      "src": "/ens-dia-a-dia/icon-192.png",
+      "src": "/dia-a-dia-ens/icon-192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/ens-dia-a-dia/icon-512.png",
+      "src": "/dia-a-dia-ens/icon-512.png",
       "sizes": "512x512",
       "type": "image/png"
     }

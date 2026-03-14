@@ -128,7 +128,7 @@ function CasalPage() {
 
 export default function App() {
   return (
-    <BrowserRouter basename="/ens-dia-a-dia">
+    <BrowserRouter basename="/dia-a-dia-ens">
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/pces" element={<PCEsPage />} />
