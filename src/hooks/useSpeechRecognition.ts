@@ -44,6 +44,7 @@ export function useSpeechRecognition() {
   const [interimText, setInterimText] = useState('');
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const onResultRef = useRef<((text: string) => void) | null>(null);
+  const processedUpToRef = useRef<number>(0); // tracks which result indices we already appended
 
   const SpeechRecognitionAPI =
     typeof window !== 'undefined'
@@ -67,6 +68,7 @@ export function useSpeechRecognition() {
       recognition.lang = 'pt-BR';
 
       onResultRef.current = onResult;
+      processedUpToRef.current = 0;
 
       recognition.onstart = () => {
         setIsListening(true);
@@ -77,10 +79,16 @@ export function useSpeechRecognition() {
         let finalTranscript = '';
         let interimTranscript = '';
 
-        for (let i = event.resultIndex; i < event.results.length; i++) {
+        // Loop through ALL results, but only collect final transcripts
+        // from indices we haven't processed yet (prevents duplication
+        // on mobile where resultIndex can stay at 0).
+        for (let i = 0; i < event.results.length; i++) {
           const result = event.results[i];
           if (result.isFinal) {
-            finalTranscript += result[0].transcript;
+            if (i >= processedUpToRef.current) {
+              finalTranscript += result[0].transcript;
+              processedUpToRef.current = i + 1;
+            }
           } else {
             interimTranscript += result[0].transcript;
           }
