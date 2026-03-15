@@ -5,7 +5,9 @@ import { useLiturgy } from '../../hooks/useLiturgy';
 import { usePrayerTracking } from '../../hooks/usePrayerTracking';
 import { useSpeechRecognition } from '../../hooks/useSpeechRecognition';
 import { useTimer } from '../../hooks/useTimer';
+import { useFocusMode } from '../../hooks/useFocusMode';
 import TimerButton from '../shared/TimerButton';
+import FocusToggle from '../shared/FocusToggle';
 import wisdomDrops from '../../data/wisdomDrops.json';
 import type { WisdomDrop } from '../../types';
 
@@ -269,6 +271,8 @@ export default function CardFlow() {
 
   // Shared timer hook (sound + vibration on completion)
   const timer = useTimer();
+  // Focus Mode — keeps screen awake + DND reminder
+  const focusMode = useFocusMode();
 
   // Wisdom for Plenitude
   const dayOfYear = Math.floor(
@@ -1233,7 +1237,10 @@ export default function CardFlow() {
           <div className="flex-1">
             <div className="flex items-center justify-between text-white/70 text-xs">
               <span>{level?.emoji} {step?.title}</span>
-              <span>{Math.round(progress)}%</span>
+              <div className="flex items-center gap-2">
+                <FocusToggle focusMode={focusMode} />
+                <span>{Math.round(progress)}%</span>
+              </div>
             </div>
             <div className="w-full bg-white/20 rounded-full h-1.5 mt-1">
               <div

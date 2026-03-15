@@ -6,7 +6,9 @@ import { usePrayerTracking } from '../../hooks/usePrayerTracking';
 import { useDiario } from '../../hooks/useDiario';
 import { useSpeechRecognition } from '../../hooks/useSpeechRecognition';
 import { useTimer } from '../../hooks/useTimer';
+import { useFocusMode } from '../../hooks/useFocusMode';
 import TimerButton from '../shared/TimerButton';
+import FocusToggle from '../shared/FocusToggle';
 import { format } from 'date-fns';
 
 /**
@@ -128,6 +130,8 @@ export default function OracaoPessoalFlow() {
 
   // Shared timer hook (sound + vibration on completion)
   const timer = useTimer();
+  // Focus Mode — keeps screen awake + DND reminder
+  const focusMode = useFocusMode();
 
   // Build steps array based on selected method
   const method = methods.find(m => m.id === selectedMethod);
@@ -970,7 +974,10 @@ export default function OracaoPessoalFlow() {
           <div className="flex-1">
             <div className="flex items-center justify-between text-white/70 text-xs">
               <span>{method?.emoji} {step?.title}</span>
-              <span>{Math.round(progress)}%</span>
+              <div className="flex items-center gap-2">
+                <FocusToggle focusMode={focusMode} />
+                <span>{Math.round(progress)}%</span>
+              </div>
             </div>
             <div className="w-full bg-white/20 rounded-full h-1.5 mt-1">
               <div
