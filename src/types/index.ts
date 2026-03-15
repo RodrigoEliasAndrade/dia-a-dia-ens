@@ -25,11 +25,16 @@ export interface OracaoConjugalData {
   lastMonthReset: string; // YYYY-MM to track month resets
 }
 
+export type DeverSentarLevelId = 'check-in' | 'conversa-guiada' | 'revisao-completa';
+
 export interface DeverSentarData {
   lastCompleted: string;
   scheduledDay: number; // day of month
   completions: Array<{
     date: string;
+    level?: DeverSentarLevelId;
+    duration?: number; // minutes
+    theme?: string; // Level 2 theme id
     notes?: string;
   }>;
 }

@@ -10,14 +10,27 @@ import RegraDeVidaFlow from './components/RegraDeVida/RegraDeVidaFlow';
 import RetiroAnualFlow from './components/RetiroAnual/RetiroAnualFlow';
 import DiarioPage from './components/Diario/DiarioPage';
 import { usePrayerTracking } from './hooks/usePrayerTracking';
+import { useLocalStorage } from './hooks/useLocalStorage';
+import { format } from 'date-fns';
+import type { DeverSentarData } from './types';
 
 function HomePage() {
   const { isCompletedToday, getCompletedDates } = usePrayerTracking();
+  const [deverSentarData] = useLocalStorage<DeverSentarData>('ens-dever-sentar', {
+    lastCompleted: '',
+    scheduledDay: 15,
+    completions: [],
+  });
+
+  const currentMonth = format(new Date(), 'yyyy-MM');
+  const deverSentarDoneThisMonth = deverSentarData.completions.some(
+    c => c.date.startsWith(currentMonth)
+  );
 
   const completedToday: Record<string, boolean> = {
     'oracao-pessoal': isCompletedToday('pessoal'),
     'oracao-conjugal': isCompletedToday('conjugal'),
-    'dever-sentar': false,
+    'dever-sentar': deverSentarDoneThisMonth,
     'regra-vida': false,
     'retiro-anual': false,
   };
