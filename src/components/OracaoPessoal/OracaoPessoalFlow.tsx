@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Timer, Pause, Play, BookOpen } from 'lucide-react';
+import { ArrowLeft, Timer, Pause, Play, BookOpen, Mic, MicOff } from 'lucide-react';
 import { useLiturgy } from '../../hooks/useLiturgy';
 import { usePrayerTracking } from '../../hooks/usePrayerTracking';
 import { useDiario } from '../../hooks/useDiario';
+import { useSpeechRecognition } from '../../hooks/useSpeechRecognition';
 import { format } from 'date-fns';
 
 /**
@@ -106,6 +107,23 @@ export default function OracaoPessoalFlow() {
   const [saved, setSaved] = useState(false);
   const [diarioNotes, setDiarioNotes] = useState('');
 
+  // Speech recognition for diary
+  const { isSupported: micSupported, isListening, interimText, startListening, stopListening } = useSpeechRecognition();
+
+  const toggleMic = useCallback(() => {
+    if (isListening) {
+      stopListening();
+    } else {
+      startListening((spokenText: string) => {
+        setDiarioNotes(prev => {
+          // Add a space before appending if there's existing text
+          const separator = prev.trim() ? ' ' : '';
+          return prev + separator + spokenText;
+        });
+      });
+    }
+  }, [isListening, startListening, stopListening]);
+
   // Silence timer
   const [timerActive, setTimerActive] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
@@ -150,6 +168,7 @@ export default function OracaoPessoalFlow() {
   const progress = allSteps.length > 0 ? ((currentStep + 1) / allSteps.length) * 100 : 0;
 
   const handleSave = () => {
+    stopListening(); // Stop mic if active
     completePessoalPrayer();
 
     // Save diary entry (even if notes are empty — records the method & reference)
@@ -452,14 +471,52 @@ export default function OracaoPessoalFlow() {
         <div className="space-y-5">
           {/* Diary / Reflection Notes */}
           <div className="bg-[#faf8f3] rounded-xl p-5 border-l-[3px] border-ens-gold/50">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-lg">📝</span>
-              <h3 className="font-semibold text-ens-blue text-sm">Meu Diário de Oração</h3>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">📝</span>
+                <h3 className="font-semibold text-ens-blue text-sm">Meu Diário de Oração</h3>
+              </div>
+              {micSupported && (
+                <button
+                  onClick={toggleMic}
+                  className={`p-2.5 rounded-full transition-all ${
+                    isListening
+                      ? 'bg-red-500 text-white shadow-lg shadow-red-500/30 animate-pulse'
+                      : 'bg-ens-blue/10 text-ens-blue hover:bg-ens-blue/20'
+                  }`}
+                  title={isListening ? 'Parar gravação' : 'Falar ao invés de digitar'}
+                >
+                  {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                </button>
+              )}
             </div>
             <p className="text-xs text-ens-text-light mb-3">
               O que Deus te disse hoje? Que palavra tocou seu coração?
               Que sentimento, decisão ou graça quer guardar?
             </p>
+
+            {/* Listening indicator */}
+            {isListening && (
+              <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-lg bg-red-50 border border-red-200">
+                <div className="flex gap-0.5 items-end">
+                  <div className="w-1 h-2 bg-red-400 rounded-full animate-pulse" />
+                  <div className="w-1 h-3 bg-red-500 rounded-full animate-pulse [animation-delay:150ms]" />
+                  <div className="w-1 h-4 bg-red-400 rounded-full animate-pulse [animation-delay:300ms]" />
+                  <div className="w-1 h-2 bg-red-500 rounded-full animate-pulse [animation-delay:450ms]" />
+                </div>
+                <span className="text-xs text-red-600 font-medium">
+                  Ouvindo... fale naturalmente
+                </span>
+              </div>
+            )}
+
+            {/* Interim text preview (what's being recognized right now) */}
+            {interimText && (
+              <div className="mb-3 px-3 py-2 rounded-lg bg-ens-blue/5 border border-ens-blue/20">
+                <p className="text-sm text-ens-blue/70 italic">{interimText}...</p>
+              </div>
+            )}
+
             <textarea
               value={diarioNotes}
               onChange={e => setDiarioNotes(e.target.value)}
@@ -473,9 +530,16 @@ export default function OracaoPessoalFlow() {
               rows={4}
               className="w-full p-3.5 rounded-xl border border-gray-200 bg-white text-sm text-ens-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-ens-gold/40 resize-none leading-relaxed"
             />
-            <p className="text-[11px] text-ens-text-light mt-2 text-center italic">
-              Suas anotações ficam salvas no Diário. Você pode reler a qualquer momento.
-            </p>
+            <div className="flex items-center justify-between mt-2">
+              <p className="text-[11px] text-ens-text-light italic">
+                Suas anotações ficam salvas no Diário.
+              </p>
+              {micSupported && (
+                <p className="text-[11px] text-ens-text-light">
+                  {isListening ? '🔴 Gravando' : '🎙️ Toque no mic para falar'}
+                </p>
+              )}
+            </div>
           </div>
 
           <div className="bg-white border border-gray-200 rounded-xl p-5 text-center space-y-3">
