@@ -70,8 +70,8 @@ export default function Calendar({ completedDates, deverSentarDay = 15 }: Calend
                 {format(day, 'd')}
               </span>
               <div className="flex gap-0.5 h-3 items-center">
-                {completed && <span className="text-[10px]">✅</span>}
-                {sentar && <span className="text-[10px]">💑</span>}
+                {completed && <span className="text-[0.625rem]">✅</span>}
+                {sentar && <span className="text-[0.625rem]">💑</span>}
               </div>
             </div>
           );

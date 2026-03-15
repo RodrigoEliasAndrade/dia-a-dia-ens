@@ -409,17 +409,17 @@ export default function DeverSentarFlow() {
           <div className="text-lg font-bold text-ens-blue">
             {Math.max(Math.round((Date.now() - startTime) / 60000), 1)} min
           </div>
-          <div className="text-[10px] text-ens-text-light">duração</div>
+          <div className="text-[0.625rem] text-ens-text-light">duração</div>
         </div>
         <div className="bg-ens-blue/5 rounded-xl p-3 text-center">
           <div className="text-2xl">📅</div>
           <div className="text-lg font-bold text-ens-blue">{completionsThisYear + 1}</div>
-          <div className="text-[10px] text-ens-text-light">este ano</div>
+          <div className="text-[0.625rem] text-ens-text-light">este ano</div>
         </div>
         <div className="bg-ens-blue/5 rounded-xl p-3 text-center">
           <div className="text-2xl">💑</div>
           <div className="text-lg font-bold text-ens-blue">{data.completions.length + 1}</div>
-          <div className="text-[10px] text-ens-text-light">total</div>
+          <div className="text-[0.625rem] text-ens-text-light">total</div>
         </div>
       </div>
 
@@ -472,7 +472,7 @@ export default function DeverSentarFlow() {
           disabled={saved}
         />
         {micSupported && (
-          <p className="text-[11px] text-ens-text-light mt-1 text-right">
+          <p className="text-[0.6875rem] text-ens-text-light mt-1 text-right">
             {isListening ? '🔴 Gravando' : '🎙️ Toque no mic para falar'}
           </p>
         )}

@@ -33,7 +33,7 @@ export default function BottomNav() {
               `}
             >
               <Icon className="w-6 h-6" />
-              <span className="text-[11px] font-medium">{item.label}</span>
+              <span className="text-[0.6875rem] font-medium">{item.label}</span>
             </button>
           );
         })}

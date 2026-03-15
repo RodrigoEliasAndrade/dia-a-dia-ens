@@ -11,6 +11,8 @@ import RetiroAnualFlow from './components/RetiroAnual/RetiroAnualFlow';
 import DiarioPage from './components/Diario/DiarioPage';
 import { usePrayerTracking } from './hooks/usePrayerTracking';
 import { useLocalStorage } from './hooks/useLocalStorage';
+import { useFontSize } from './hooks/useFontSize';
+import FontSizeControl from './components/shared/FontSizeControl';
 import { format } from 'date-fns';
 import type { DeverSentarData } from './types';
 
@@ -105,11 +107,17 @@ function CasalPage() {
         </p>
         <p className="text-xs text-ens-text-light mt-2 text-right">— Padre Henri Caffarel</p>
       </div>
+      <div className="mt-6">
+        <FontSizeControl />
+      </div>
     </div>
   );
 }
 
 export default function App() {
+  // Apply saved font-size preference on mount (scales all rem values)
+  useFontSize();
+
   return (
     <BrowserRouter basename="/dia-a-dia-ens">
       <Routes>

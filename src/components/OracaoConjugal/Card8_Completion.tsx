@@ -31,17 +31,17 @@ export default function Card8_Completion({
         <div className="bg-ens-blue/5 rounded-xl p-3 text-center">
           <div className="text-2xl">⏱️</div>
           <div className="text-lg font-bold text-ens-blue">{duration} min</div>
-          <div className="text-[10px] text-ens-text-light">duração</div>
+          <div className="text-[0.625rem] text-ens-text-light">duração</div>
         </div>
         <div className="bg-ens-blue/5 rounded-xl p-3 text-center">
           <div className="text-2xl">🔥</div>
           <div className="text-lg font-bold text-ens-blue">{currentStreak + 1}</div>
-          <div className="text-[10px] text-ens-text-light">dias seguidos</div>
+          <div className="text-[0.625rem] text-ens-text-light">dias seguidos</div>
         </div>
         <div className="bg-ens-blue/5 rounded-xl p-3 text-center">
           <div className="text-2xl">📅</div>
           <div className="text-lg font-bold text-ens-blue">{monthlyCount + 1}</div>
-          <div className="text-[10px] text-ens-text-light">este mês</div>
+          <div className="text-[0.625rem] text-ens-text-light">este mês</div>
         </div>
       </div>
 

@@ -194,7 +194,7 @@ export default function OracaoPessoalFlow() {
 
     if (matches.length === 0) {
       return (
-        <p className="font-serif text-[17px] leading-[2] text-ens-text">
+        <p className="font-serif text-[1.0625rem] leading-[2] text-ens-text">
           {text}
         </p>
       );
@@ -221,9 +221,9 @@ export default function OracaoPessoalFlow() {
     return (
       <div className="space-y-3">
         {verses.map((verse, i) => (
-          <p key={i} className="font-serif text-[17px] leading-[2] text-ens-text">
+          <p key={i} className="font-serif text-[1.0625rem] leading-[2] text-ens-text">
             {verse.number && (
-              <sup className="text-[11px] font-sans font-bold text-ens-gold mr-1 select-none">
+              <sup className="text-[0.6875rem] font-sans font-bold text-ens-gold mr-1 select-none">
                 {verse.number}
               </sup>
             )}
@@ -474,11 +474,11 @@ export default function OracaoPessoalFlow() {
               className="w-full p-3.5 rounded-xl border border-gray-200 bg-white text-sm text-ens-text placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-ens-gold/40 resize-none leading-relaxed"
             />
             <div className="flex items-center justify-between mt-2">
-              <p className="text-[11px] text-ens-text-light italic">
+              <p className="text-[0.6875rem] text-ens-text-light italic">
                 Suas anotações ficam salvas no Diário.
               </p>
               {micSupported && (
-                <p className="text-[11px] text-ens-text-light">
+                <p className="text-[0.6875rem] text-ens-text-light">
                   {isListening ? '🔴 Gravando' : '🎙️ Toque no mic para falar'}
                 </p>
               )}

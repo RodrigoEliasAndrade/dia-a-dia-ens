@@ -75,7 +75,7 @@ export default function FocusToggle({ focusMode }: FocusToggleProps) {
               ✓ Tela permanecerá ligada
             </p>
           )}
-          <p className="text-[10px] text-ens-text-light mt-2 text-center">
+          <p className="text-[0.625rem] text-ens-text-light mt-2 text-center">
             Toque para fechar
           </p>
         </div>

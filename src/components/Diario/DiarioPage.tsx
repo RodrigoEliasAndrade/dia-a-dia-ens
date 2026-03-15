@@ -50,7 +50,7 @@ function EntryCard({ entry }: { entry: DiarioEntry }) {
             <span className="text-sm">{entry.methodEmoji}</span>
             <span className="text-xs text-ens-text-light">{entry.methodName}</span>
             {entry.duration > 0 && (
-              <span className="text-[10px] text-ens-text-light">• {entry.duration} min</span>
+              <span className="text-[0.625rem] text-ens-text-light">• {entry.duration} min</span>
             )}
           </div>
         </div>
@@ -173,7 +173,7 @@ export default function DiarioPage() {
             <Calendar className="w-4 h-4 text-ens-blue" />
             <div>
               <p className="text-lg font-bold text-ens-blue">{totalEntries}</p>
-              <p className="text-[10px] text-ens-text-light">
+              <p className="text-[0.625rem] text-ens-text-light">
                 {totalEntries === 1 ? 'oração' : 'orações'}
               </p>
             </div>
@@ -181,7 +181,7 @@ export default function DiarioPage() {
           <div className="h-8 w-px bg-gray-200" />
           <div>
             <p className="text-lg font-bold text-ens-gold">{entriesWithNotes}</p>
-            <p className="text-[10px] text-ens-text-light">com notas</p>
+            <p className="text-[0.625rem] text-ens-text-light">com notas</p>
           </div>
           <div className="h-8 w-px bg-gray-200" />
           <div className="flex-1 flex items-center gap-1.5 flex-wrap justify-end">
@@ -219,7 +219,7 @@ export default function DiarioPage() {
                 <h2 className="text-xs font-bold text-ens-blue uppercase tracking-wider px-2">
                   {formatMonthHeader(month)}
                 </h2>
-                <span className="text-[10px] text-ens-text-light">
+                <span className="text-[0.625rem] text-ens-text-light">
                   ({groupedEntries[month].length})
                 </span>
                 <div className="h-px flex-1 bg-ens-gold/30" />

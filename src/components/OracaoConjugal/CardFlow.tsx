@@ -431,17 +431,17 @@ export default function CardFlow() {
           <div className="text-lg font-bold text-ens-blue">
             {Math.max(Math.round((Date.now() - startTime) / 60000), 1)} min
           </div>
-          <div className="text-[10px] text-ens-text-light">duração</div>
+          <div className="text-[0.625rem] text-ens-text-light">duração</div>
         </div>
         <div className="bg-ens-blue/5 rounded-xl p-3 text-center">
           <div className="text-2xl">🔥</div>
           <div className="text-lg font-bold text-ens-blue">{conjugalData.currentStreak + 1}</div>
-          <div className="text-[10px] text-ens-text-light">dias seguidos</div>
+          <div className="text-[0.625rem] text-ens-text-light">dias seguidos</div>
         </div>
         <div className="bg-ens-blue/5 rounded-xl p-3 text-center">
           <div className="text-2xl">📅</div>
           <div className="text-lg font-bold text-ens-blue">{conjugalData.monthlyCount + 1}</div>
-          <div className="text-[10px] text-ens-text-light">este mês</div>
+          <div className="text-[0.625rem] text-ens-text-light">este mês</div>
         </div>
       </div>
 
@@ -495,7 +495,7 @@ export default function CardFlow() {
           disabled={saved}
         />
         {micSupported && (
-          <p className="text-[11px] text-ens-text-light mt-1 text-right">
+          <p className="text-[0.6875rem] text-ens-text-light mt-1 text-right">
             {isListening ? '🔴 Gravando' : '🎙️ Toque no mic para falar'}
           </p>
         )}
@@ -667,7 +667,7 @@ export default function CardFlow() {
                     )}
                   </div>
                 )}
-                <p className="font-serif text-[16px] leading-[1.9] text-ens-text whitespace-pre-line">
+                <p className="font-serif text-base leading-[1.9] text-ens-text whitespace-pre-line">
                   {liturgy.evangelho}
                 </p>
               </div>
