@@ -1,8 +1,10 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Timer, Pause, Play, Mic, MicOff, Save } from 'lucide-react';
+import { ArrowLeft, Mic, MicOff, Save } from 'lucide-react';
 import { useLocalStorage } from '../../hooks/useLocalStorage';
 import { useSpeechRecognition } from '../../hooks/useSpeechRecognition';
+import { useTimer } from '../../hooks/useTimer';
+import TimerButton from '../shared/TimerButton';
 import { format } from 'date-fns';
 import type { DeverSentarData, DeverSentarLevelId } from '../../types';
 
@@ -223,41 +225,8 @@ export default function DeverSentarFlow() {
   // Level 2 specific
   const [selectedTheme, setSelectedTheme] = useState<string | null>(null);
 
-  // Timer
-  const [timerActive, setTimerActive] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(0);
-  const intervalRef = useRef<number | null>(null);
-
-  // ─── Timer helpers ──────────────────────────────
-
-  const stopTimer = useCallback(() => {
-    if (intervalRef.current !== null) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-    setTimerActive(false);
-  }, []);
-
-  const startTimerFn = useCallback((seconds: number) => {
-    stopTimer();
-    setTimeLeft(seconds);
-    setTimerActive(true);
-    intervalRef.current = window.setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          stopTimer();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  }, [stopTimer]);
-
-  useEffect(() => {
-    return () => { if (intervalRef.current !== null) clearInterval(intervalRef.current); };
-  }, []);
-
-  const formatTime = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
+  // Shared timer hook (sound + vibration on completion)
+  const timer = useTimer();
 
   // ─── Mic toggle ─────────────────────────────────
 
@@ -302,12 +271,12 @@ export default function DeverSentarFlow() {
   };
 
   const handleNext = () => {
-    stopTimer();
+    timer.reset();
     if (currentStep < allSteps.length - 1) setCurrentStep(prev => prev + 1);
   };
 
   const handlePrev = () => {
-    stopTimer();
+    timer.reset();
     if (currentStep > 0) setCurrentStep(prev => prev - 1);
   };
 
@@ -328,40 +297,6 @@ export default function DeverSentarFlow() {
   ).length;
   const currentMonth = format(new Date(), 'yyyy-MM');
   const doneThisMonth = data.completions.some(c => c.date.startsWith(currentMonth));
-
-  // ─── Timer button renderer ─────────────────────
-
-  const renderTimerButton = (label: string, seconds: number) => (
-    <div className="text-center mt-4">
-      {!timerActive && timeLeft === 0 ? (
-        <button
-          onClick={() => startTimerFn(seconds)}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-ens-blue/10 text-ens-blue text-sm font-medium transition-all active:scale-95"
-        >
-          <Timer className="w-4 h-4" />
-          {label}
-        </button>
-      ) : (
-        <div className="space-y-2">
-          <div className={`text-3xl font-bold ${timeLeft <= 10 ? 'text-ens-gold' : 'text-ens-blue'}`}>
-            {formatTime(timeLeft)}
-          </div>
-          {timeLeft > 0 && (
-            <button
-              onClick={timerActive ? stopTimer : () => startTimerFn(timeLeft)}
-              className="text-xs text-ens-text-light inline-flex items-center gap-1"
-            >
-              {timerActive ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
-              {timerActive ? 'Pausar' : 'Continuar'}
-            </button>
-          )}
-          {timeLeft === 0 && (
-            <p className="text-xs text-ens-gold font-medium">🔔 Tempo completado</p>
-          )}
-        </div>
-      )}
-    </div>
-  );
 
   // ═══════════════════════════════════════════════════
   // LEVEL SELECTION SCREEN
@@ -580,7 +515,7 @@ export default function DeverSentarFlow() {
           onClick={() => {
             setSelectedLevel(null);
             setCurrentStep(0);
-            stopTimer();
+            timer.reset();
             setSaved(false);
             setNotes('');
             setSelectedTheme(null);
@@ -644,7 +579,7 @@ export default function DeverSentarFlow() {
               Nível: <strong className="text-ens-blue">🌱 Check-in</strong>
             </p>
             <button
-              onClick={() => { setSelectedLevel(null); setCurrentStep(0); stopTimer(); }}
+              onClick={() => { setSelectedLevel(null); setCurrentStep(0); timer.reset(); }}
               className="text-xs text-ens-blue underline mt-1"
             >
               Trocar nível
@@ -693,7 +628,7 @@ export default function DeverSentarFlow() {
             </div>
           </div>
 
-          {renderTimerButton('Sugestão: Timer de 10 minutos', 600)}
+          <TimerButton timer={timer} label="Sugestão: Timer de 10 minutos" defaultDuration={600} />
 
           <p className="text-center text-xs text-ens-text-light italic">
             Não se preocupem com perfeição. A honestidade simples já é oração.
@@ -820,7 +755,7 @@ export default function DeverSentarFlow() {
               Nível: <strong className="text-ens-blue">🌿 Conversa Guiada</strong>
             </p>
             <button
-              onClick={() => { setSelectedLevel(null); setCurrentStep(0); stopTimer(); setSelectedTheme(null); }}
+              onClick={() => { setSelectedLevel(null); setCurrentStep(0); timer.reset(); setSelectedTheme(null); }}
               className="text-xs text-ens-blue underline mt-1"
             >
               Trocar nível
@@ -913,7 +848,7 @@ export default function DeverSentarFlow() {
                 ))}
               </div>
 
-              {renderTimerButton('Sugestão: Timer de 20 minutos', 1200)}
+              <TimerButton timer={timer} label="Sugestão: Timer de 20 minutos" defaultDuration={1200} />
             </>
           )}
         </div>
@@ -1056,7 +991,7 @@ export default function DeverSentarFlow() {
               Nível: <strong className="text-ens-blue">💎 Revisão Completa</strong>
             </p>
             <button
-              onClick={() => { setSelectedLevel(null); setCurrentStep(0); stopTimer(); }}
+              onClick={() => { setSelectedLevel(null); setCurrentStep(0); timer.reset(); }}
               className="text-xs text-ens-blue underline mt-1"
             >
               Trocar nível
@@ -1090,7 +1025,7 @@ export default function DeverSentarFlow() {
             </div>
           </div>
 
-          {renderTimerButton('Sugestão: Timer de 10 minutos', 600)}
+          <TimerButton timer={timer} label="Sugestão: Timer de 10 minutos" defaultDuration={600} />
 
           <p className="text-center text-xs text-ens-text-light italic">
             Cada um fala por vez. O outro apenas escuta com o coração.

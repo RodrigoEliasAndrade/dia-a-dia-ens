@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState } from 'react';
 import { Check, Timer } from 'lucide-react';
+import { useTimer } from '../../hooks/useTimer';
 
 const checklist = [
   { id: 'phones', label: 'Desliguem os celulares', emoji: '📱' },
@@ -10,41 +11,11 @@ const checklist = [
 
 export default function Card2_Preparation() {
   const [checked, setChecked] = useState<Record<string, boolean>>({});
-  const [timerActive, setTimerActive] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(30);
-  const intervalRef = useRef<number | null>(null);
+  const timer = useTimer();
 
   const toggle = (id: string) => {
     setChecked(prev => ({ ...prev, [id]: !prev[id] }));
   };
-
-  const stopTimer = useCallback(() => {
-    if (intervalRef.current !== null) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-    setTimerActive(false);
-  }, []);
-
-  const startTimer = useCallback(() => {
-    setTimeLeft(30);
-    setTimerActive(true);
-    intervalRef.current = window.setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          stopTimer();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  }, [stopTimer]);
-
-  useEffect(() => {
-    return () => {
-      if (intervalRef.current !== null) clearInterval(intervalRef.current);
-    };
-  }, []);
 
   return (
     <div className="space-y-5">
@@ -87,9 +58,9 @@ export default function Card2_Preparation() {
       {/* Optional silence timer */}
       <div className="text-center">
         <p className="text-sm text-ens-text-light mb-3">Silêncio de preparação (opcional)</p>
-        {!timerActive ? (
+        {!timer.timerActive && !timer.isCompleted && timer.timeLeft === 0 ? (
           <button
-            onClick={startTimer}
+            onClick={() => timer.start(30)}
             className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-ens-cream border border-gray-300 text-ens-text font-medium transition-all active:scale-95"
           >
             <Timer className="w-5 h-5" />
@@ -97,12 +68,12 @@ export default function Card2_Preparation() {
           </button>
         ) : (
           <div className="space-y-2">
-            <div className="text-5xl font-bold text-ens-blue">{timeLeft}</div>
+            <div className="text-5xl font-bold text-ens-blue">{timer.timeLeft}</div>
             <p className="text-sm text-ens-text-light">
-              {timeLeft === 0 ? '🔔 Tempo completado' : 'Respirem juntos em silêncio...'}
+              {timer.isCompleted ? '🔔 Tempo completado' : 'Respirem juntos em silêncio...'}
             </p>
-            {timeLeft > 0 && (
-              <button onClick={stopTimer} className="text-xs text-ens-text-light underline">
+            {timer.timerActive && (
+              <button onClick={timer.stop} className="text-xs text-ens-text-light underline">
                 Pular
               </button>
             )}

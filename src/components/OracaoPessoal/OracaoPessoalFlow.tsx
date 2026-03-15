@@ -1,10 +1,12 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Timer, Pause, Play, BookOpen, Mic, MicOff } from 'lucide-react';
+import { ArrowLeft, BookOpen, Mic, MicOff } from 'lucide-react';
 import { useLiturgy } from '../../hooks/useLiturgy';
 import { usePrayerTracking } from '../../hooks/usePrayerTracking';
 import { useDiario } from '../../hooks/useDiario';
 import { useSpeechRecognition } from '../../hooks/useSpeechRecognition';
+import { useTimer } from '../../hooks/useTimer';
+import TimerButton from '../shared/TimerButton';
 import { format } from 'date-fns';
 
 /**
@@ -124,39 +126,8 @@ export default function OracaoPessoalFlow() {
     }
   }, [isListening, startListening, stopListening]);
 
-  // Silence timer
-  const [timerActive, setTimerActive] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(0);
-  const intervalRef = useRef<number | null>(null);
-
-  const stopTimer = useCallback(() => {
-    if (intervalRef.current !== null) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-    setTimerActive(false);
-  }, []);
-
-  const startTimer = useCallback((seconds: number) => {
-    stopTimer();
-    setTimeLeft(seconds);
-    setTimerActive(true);
-    intervalRef.current = window.setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          stopTimer();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  }, [stopTimer]);
-
-  useEffect(() => {
-    return () => { if (intervalRef.current !== null) clearInterval(intervalRef.current); };
-  }, []);
-
-  const formatTime = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
+  // Shared timer hook (sound + vibration on completion)
+  const timer = useTimer();
 
   // Build steps array based on selected method
   const method = methods.find(m => m.id === selectedMethod);
@@ -188,12 +159,12 @@ export default function OracaoPessoalFlow() {
   };
 
   const handleNext = () => {
-    stopTimer();
+    timer.reset();
     if (currentStep < allSteps.length - 1) setCurrentStep(prev => prev + 1);
   };
 
   const handlePrev = () => {
-    stopTimer();
+    timer.reset();
     if (currentStep > 0) setCurrentStep(prev => prev - 1);
   };
 
@@ -258,38 +229,6 @@ export default function OracaoPessoalFlow() {
       </div>
     );
   };
-
-  const renderTimerButton = (label: string, seconds: number) => (
-    <div className="text-center mt-4">
-      {!timerActive && timeLeft === 0 ? (
-        <button
-          onClick={() => startTimer(seconds)}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-ens-blue/10 text-ens-blue text-sm font-medium"
-        >
-          <Timer className="w-4 h-4" />
-          {label}
-        </button>
-      ) : (
-        <div className="space-y-2">
-          <div className={`text-3xl font-bold ${timeLeft <= 10 ? 'text-ens-gold' : 'text-ens-blue'}`}>
-            {formatTime(timeLeft)}
-          </div>
-          {timeLeft > 0 && (
-            <button
-              onClick={timerActive ? stopTimer : () => startTimer(timeLeft)}
-              className="text-xs text-ens-text-light inline-flex items-center gap-1"
-            >
-              {timerActive ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
-              {timerActive ? 'Pausar' : 'Continuar'}
-            </button>
-          )}
-          {timeLeft === 0 && (
-            <p className="text-xs text-ens-gold font-medium">🔔 Tempo completado</p>
-          )}
-        </div>
-      )}
-    </div>
-  );
 
   // ─── METHOD SELECTION SCREEN ───────────────────────────
   if (!selectedMethod) {
@@ -390,14 +329,14 @@ export default function OracaoPessoalFlow() {
             Faça o sinal da cruz e permaneça em silêncio
           </p>
 
-          {renderTimerButton('Silêncio de 1 minuto', 60)}
+          <TimerButton timer={timer} label="Silêncio de 1 minuto" defaultDuration={60} />
 
           <div className="bg-ens-cream rounded-xl p-4 border border-gray-200">
             <p className="text-xs text-ens-text-light text-center">
               Método escolhido: <strong className="text-ens-blue">{method?.emoji} {method?.name}</strong>
             </p>
             <button
-              onClick={() => { setSelectedMethod(null); setCurrentStep(0); stopTimer(); }}
+              onClick={() => { setSelectedMethod(null); setCurrentStep(0); timer.reset(); }}
               className="block mx-auto mt-2 text-xs text-ens-blue underline"
             >
               Trocar método
@@ -633,7 +572,7 @@ export default function OracaoPessoalFlow() {
               </p>
             </div>
 
-            {renderTimerButton('Meditar por 3 minutos', 180)}
+            <TimerButton timer={timer} label="Meditar por 3 minutos" defaultDuration={180} />
           </div>
         );
       }
@@ -672,7 +611,7 @@ export default function OracaoPessoalFlow() {
               Reze especialmente pelo seu cônjuge. A oração pessoal alimenta o amor conjugal.
             </p>
 
-            {renderTimerButton('Rezar por 3 minutos', 180)}
+            <TimerButton timer={timer} label="Rezar por 3 minutos" defaultDuration={180} />
           </div>
         );
       }
@@ -697,7 +636,7 @@ export default function OracaoPessoalFlow() {
               <p className="text-xs text-ens-text-light text-center mt-2">— Salmo 46,11</p>
             </div>
 
-            {renderTimerButton('Silêncio de 2 minutos', 120)}
+            <TimerButton timer={timer} label="Silêncio de 2 minutos" defaultDuration={120} />
 
             <div className="bg-ens-blue/5 rounded-xl p-4 border-l-4 border-ens-blue">
               <p className="text-xs text-ens-text-light italic">
@@ -751,7 +690,7 @@ export default function OracaoPessoalFlow() {
               </p>
             </div>
 
-            {renderTimerButton('Imaginar por 3 minutos', 180)}
+            <TimerButton timer={timer} label="Imaginar por 3 minutos" defaultDuration={180} />
           </div>
         );
       }
@@ -809,7 +748,7 @@ export default function OracaoPessoalFlow() {
               </p>
             </div>
 
-            {renderTimerButton('Contemplar por 3 minutos', 180)}
+            <TimerButton timer={timer} label="Contemplar por 3 minutos" defaultDuration={180} />
           </div>
         );
       }
@@ -855,7 +794,7 @@ export default function OracaoPessoalFlow() {
               <p className="text-xs text-ens-text-light mt-1 text-right">— Santo Inácio, Exercícios Espirituais §54</p>
             </div>
 
-            {renderTimerButton('Colóquio de 3 minutos', 180)}
+            <TimerButton timer={timer} label="Colóquio de 3 minutos" defaultDuration={180} />
           </div>
         );
       }
@@ -903,7 +842,7 @@ export default function OracaoPessoalFlow() {
               <p className="text-xs text-ens-text-light mt-1 text-right">— São Francisco de Sales, Vida Devota II,6</p>
             </div>
 
-            {renderTimerButton('Considerar por 3 minutos', 180)}
+            <TimerButton timer={timer} label="Considerar por 3 minutos" defaultDuration={180} />
           </div>
         );
       }
@@ -1011,7 +950,7 @@ export default function OracaoPessoalFlow() {
               <p className="text-xs text-ens-text-light mt-1 text-right">— São Francisco de Sales, Vida Devota II,7</p>
             </div>
 
-            {renderTimerButton('Silêncio de 1 minuto', 60)}
+            <TimerButton timer={timer} label="Silêncio de 1 minuto" defaultDuration={60} />
           </div>
         );
       }

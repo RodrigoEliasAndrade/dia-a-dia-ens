@@ -1,9 +1,11 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Timer, Pause, Play, Check, AlertTriangle, Mic, MicOff, Save } from 'lucide-react';
+import { ArrowLeft, Check, AlertTriangle, Mic, MicOff, Save } from 'lucide-react';
 import { useLiturgy } from '../../hooks/useLiturgy';
 import { usePrayerTracking } from '../../hooks/usePrayerTracking';
 import { useSpeechRecognition } from '../../hooks/useSpeechRecognition';
+import { useTimer } from '../../hooks/useTimer';
+import TimerButton from '../shared/TimerButton';
 import wisdomDrops from '../../data/wisdomDrops.json';
 import type { WisdomDrop } from '../../types';
 
@@ -265,10 +267,8 @@ export default function CardFlow() {
   const [selectedPrayer, setSelectedPrayer] = useState<string | null>(null);
   const [intentions, setIntentions] = useState(['', '']);
 
-  // Timer
-  const [timerActive, setTimerActive] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(0);
-  const intervalRef = useRef<number | null>(null);
+  // Shared timer hook (sound + vibration on completion)
+  const timer = useTimer();
 
   // Wisdom for Plenitude
   const dayOfYear = Math.floor(
@@ -279,37 +279,6 @@ export default function CardFlow() {
 
   // Guided prayer for Semente (rotate by day of week)
   const todayPrayer = guidedPrayers[new Date().getDay()];
-
-  // ─── Timer helpers ──────────────────────────────
-
-  const stopTimer = useCallback(() => {
-    if (intervalRef.current !== null) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-    setTimerActive(false);
-  }, []);
-
-  const startTimerFn = useCallback((seconds: number) => {
-    stopTimer();
-    setTimeLeft(seconds);
-    setTimerActive(true);
-    intervalRef.current = window.setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          stopTimer();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  }, [stopTimer]);
-
-  useEffect(() => {
-    return () => { if (intervalRef.current !== null) clearInterval(intervalRef.current); };
-  }, []);
-
-  const formatTime = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
 
   // ─── Mic toggle ─────────────────────────────────
 
@@ -344,12 +313,12 @@ export default function CardFlow() {
   };
 
   const handleNext = () => {
-    stopTimer();
+    timer.reset();
     if (currentStep < allSteps.length - 1) setCurrentStep(prev => prev + 1);
   };
 
   const handlePrev = () => {
-    stopTimer();
+    timer.reset();
     if (currentStep > 0) setCurrentStep(prev => prev - 1);
   };
 
@@ -362,40 +331,6 @@ export default function CardFlow() {
       navigate('/');
     }
   };
-
-  // ─── Timer button renderer ─────────────────────
-
-  const renderTimerButton = (label: string, seconds: number) => (
-    <div className="text-center mt-4">
-      {!timerActive && timeLeft === 0 ? (
-        <button
-          onClick={() => startTimerFn(seconds)}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-ens-blue/10 text-ens-blue text-sm font-medium transition-all active:scale-95"
-        >
-          <Timer className="w-4 h-4" />
-          {label}
-        </button>
-      ) : (
-        <div className="space-y-2">
-          <div className={`text-3xl font-bold ${timeLeft <= 10 ? 'text-ens-gold' : 'text-ens-blue'}`}>
-            {formatTime(timeLeft)}
-          </div>
-          {timeLeft > 0 && (
-            <button
-              onClick={timerActive ? stopTimer : () => startTimerFn(timeLeft)}
-              className="text-xs text-ens-text-light inline-flex items-center gap-1"
-            >
-              {timerActive ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
-              {timerActive ? 'Pausar' : 'Continuar'}
-            </button>
-          )}
-          {timeLeft === 0 && (
-            <p className="text-xs text-ens-gold font-medium">🔔 Tempo completado</p>
-          )}
-        </div>
-      )}
-    </div>
-  );
 
   // ═══════════════════════════════════════════════════
   // LEVEL SELECTION SCREEN
@@ -603,7 +538,7 @@ export default function CardFlow() {
           onClick={() => {
             setSelectedLevel(null);
             setCurrentStep(0);
-            stopTimer();
+            timer.reset();
             setSaved(false);
             setJournal('');
           }}
@@ -661,7 +596,7 @@ export default function CardFlow() {
             </p>
           </div>
 
-          {renderTimerButton('30 segundos de silêncio', 30)}
+          <TimerButton timer={timer} label="30 segundos de silêncio" defaultDuration={30} />
 
           <div className="bg-ens-blue/5 rounded-xl p-4 border-l-4 border-ens-blue">
             <p className="text-xs text-ens-text italic">
@@ -676,7 +611,7 @@ export default function CardFlow() {
               Nível: <strong className="text-ens-blue">🌱 Semente</strong>
             </p>
             <button
-              onClick={() => { setSelectedLevel(null); setCurrentStep(0); stopTimer(); }}
+              onClick={() => { setSelectedLevel(null); setCurrentStep(0); timer.reset(); }}
               className="text-xs text-ens-blue underline mt-1"
             >
               Trocar nível
@@ -792,7 +727,7 @@ export default function CardFlow() {
             💑 Podem também permanecer em silêncio por um momento, de mãos dadas
           </p>
 
-          {renderTimerButton('Silêncio de 1 minuto', 60)}
+          <TimerButton timer={timer} label="Silêncio de 1 minuto" defaultDuration={60} />
         </div>
       );
     }
@@ -832,7 +767,7 @@ export default function CardFlow() {
             </p>
           </div>
 
-          {renderTimerButton('1 minuto de silêncio', 60)}
+          <TimerButton timer={timer} label="1 minuto de silêncio" defaultDuration={60} />
 
           {/* Level indicator */}
           <div className="bg-ens-cream rounded-xl p-3 border border-gray-200 text-center">
@@ -840,7 +775,7 @@ export default function CardFlow() {
               Nível: <strong className="text-ens-blue">🌿 Crescimento</strong>
             </p>
             <button
-              onClick={() => { setSelectedLevel(null); setCurrentStep(0); stopTimer(); }}
+              onClick={() => { setSelectedLevel(null); setCurrentStep(0); timer.reset(); }}
               className="text-xs text-ens-blue underline mt-1"
             >
               Trocar nível
@@ -916,7 +851,7 @@ export default function CardFlow() {
             </div>
           </div>
 
-          {renderTimerButton('Timer de 5 minutos', 300)}
+          <TimerButton timer={timer} label="Timer de 5 minutos" defaultDuration={300} />
 
           <div className="border-t border-gray-200 pt-5">
             <div className="bg-ens-cream rounded-xl p-4 border border-gray-200">
@@ -982,7 +917,7 @@ export default function CardFlow() {
               Nível: <strong className="text-ens-blue">💎 Plenitude</strong>
             </p>
             <button
-              onClick={() => { setSelectedLevel(null); setCurrentStep(0); stopTimer(); }}
+              onClick={() => { setSelectedLevel(null); setCurrentStep(0); timer.reset(); }}
               className="text-xs text-ens-blue underline mt-1"
             >
               Trocar nível
@@ -1031,7 +966,7 @@ export default function CardFlow() {
             <p className="text-sm text-white/80 mt-1">Olhos nos olhos</p>
           </div>
 
-          {renderTimerButton('30 segundos de silêncio', 30)}
+          <TimerButton timer={timer} label="30 segundos de silêncio" defaultDuration={30} />
         </div>
       );
     }
@@ -1131,7 +1066,7 @@ export default function CardFlow() {
             ))}
           </div>
 
-          {renderTimerButton('Timer de 10 minutos', 600)}
+          <TimerButton timer={timer} label="Timer de 10 minutos" defaultDuration={600} />
 
           <p className="text-center text-xs text-ens-text-light italic">
             💛 Este é o CORAÇÃO da oração conjugal segundo as ENS

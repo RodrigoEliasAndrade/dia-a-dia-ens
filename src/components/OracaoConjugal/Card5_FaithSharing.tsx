@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
 import { Timer, AlertTriangle } from 'lucide-react';
+import { useTimer } from '../../hooks/useTimer';
 
 const reflectionQuestions = [
   '❤️ O que tocou o meu coração na Palavra de Deus de hoje?',
@@ -8,43 +8,7 @@ const reflectionQuestions = [
 ];
 
 export default function Card5_FaithSharing() {
-  const [timerActive, setTimerActive] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(600); // 10 minutes
-  const intervalRef = useRef<number | null>(null);
-
-  const stopTimer = useCallback(() => {
-    if (intervalRef.current !== null) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-    setTimerActive(false);
-  }, []);
-
-  const startTimer = useCallback(() => {
-    setTimeLeft(600);
-    setTimerActive(true);
-    intervalRef.current = window.setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          stopTimer();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  }, [stopTimer]);
-
-  useEffect(() => {
-    return () => {
-      if (intervalRef.current !== null) clearInterval(intervalRef.current);
-    };
-  }, []);
-
-  const formatTime = (seconds: number) => {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m}:${s.toString().padStart(2, '0')}`;
-  };
+  const timer = useTimer();
 
   return (
     <div className="space-y-5">
@@ -97,9 +61,9 @@ export default function Card5_FaithSharing() {
         <p className="text-xs text-ens-text-light mb-3">
           Sugestão: Reservem pelo menos 10 minutos para a partilha
         </p>
-        {!timerActive ? (
+        {!timer.timerActive && !timer.isCompleted && timer.timeLeft === 0 ? (
           <button
-            onClick={startTimer}
+            onClick={() => timer.start(600)}
             className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-ens-blue/10 text-ens-blue font-medium transition-all active:scale-95"
           >
             <Timer className="w-5 h-5" />
@@ -107,14 +71,14 @@ export default function Card5_FaithSharing() {
           </button>
         ) : (
           <div className="space-y-2">
-            <div className={`text-4xl font-bold ${timeLeft <= 60 ? 'text-red-500' : 'text-ens-blue'}`}>
-              {formatTime(timeLeft)}
+            <div className={`text-4xl font-bold ${timer.timeLeft <= 60 ? 'text-red-500' : 'text-ens-blue'}`}>
+              {timer.formatTime(timer.timeLeft)}
             </div>
             <p className="text-xs text-ens-text-light">
-              {timeLeft === 0 ? '🔔 Tempo sugerido completado' : 'Tomem o tempo que precisarem...'}
+              {timer.isCompleted ? '🔔 Tempo sugerido completado' : 'Tomem o tempo que precisarem...'}
             </p>
-            {timeLeft > 0 && (
-              <button onClick={stopTimer} className="text-xs text-ens-text-light underline">
+            {timer.timerActive && (
+              <button onClick={timer.stop} className="text-xs text-ens-text-light underline">
                 Parar timer
               </button>
             )}
