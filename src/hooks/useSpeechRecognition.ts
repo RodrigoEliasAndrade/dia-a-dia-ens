@@ -6,6 +6,13 @@ import { useState, useRef, useCallback, useEffect } from 'react';
  * Uses the browser's built-in SpeechRecognition (no external services).
  * Supports Portuguese (pt-BR) and works on Chrome, Edge, Safari 14.1+.
  * Falls back gracefully — `isSupported` will be false on unsupported browsers.
+ *
+ * ARCHITECTURE: Uses `continuous: false` + auto-restart.
+ * Mobile browsers (especially Android Chrome) have bugs with `continuous: true`
+ * that cause duplicated results. Instead, we run short recognition sessions
+ * and automatically restart when each one ends — giving the same user experience
+ * without the duplication bug. This also handles the "stops on pause" problem
+ * since we restart after every natural pause.
  */
 
 // TypeScript declarations for the Web Speech API
@@ -44,7 +51,7 @@ export function useSpeechRecognition() {
   const [interimText, setInterimText] = useState('');
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const onResultRef = useRef<((text: string) => void) | null>(null);
-  const processedUpToRef = useRef<number>(0); // tracks which result indices we already appended
+  const wantsToListenRef = useRef(false); // true = user wants mic on, false = user stopped
 
   const SpeechRecognitionAPI =
     typeof window !== 'undefined'
@@ -52,6 +59,79 @@ export function useSpeechRecognition() {
       : null;
 
   const isSupported = !!SpeechRecognitionAPI;
+
+  // Internal: create and start a single recognition session
+  const startSession = useCallback(() => {
+    if (!SpeechRecognitionAPI || !wantsToListenRef.current) return;
+
+    const recognition = new SpeechRecognitionAPI();
+    recognition.continuous = false;   // ONE phrase per session — no duplication
+    recognition.interimResults = true; // show real-time preview
+    recognition.lang = 'pt-BR';
+
+    recognition.onstart = () => {
+      setIsListening(true);
+    };
+
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      let finalTranscript = '';
+      let interimTranscript = '';
+
+      for (let i = 0; i < event.results.length; i++) {
+        const result = event.results[i];
+        if (result.isFinal) {
+          finalTranscript += result[0].transcript;
+        } else {
+          interimTranscript += result[0].transcript;
+        }
+      }
+
+      setInterimText(interimTranscript);
+
+      if (finalTranscript && onResultRef.current) {
+        onResultRef.current(finalTranscript);
+        setInterimText('');
+      }
+    };
+
+    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      // These are normal — happen on silence or when we abort
+      if (event.error === 'no-speech' || event.error === 'aborted') {
+        return; // onend will fire and handle restart
+      }
+      // Real error (e.g. 'not-allowed', 'network') — stop completely
+      console.warn('Speech recognition error:', event.error);
+      wantsToListenRef.current = false;
+      setIsListening(false);
+      setInterimText('');
+    };
+
+    recognition.onend = () => {
+      setInterimText('');
+      // Auto-restart if user still wants to listen
+      if (wantsToListenRef.current) {
+        // Small delay prevents rapid restart loops on some devices
+        setTimeout(() => {
+          if (wantsToListenRef.current) {
+            startSession();
+          } else {
+            setIsListening(false);
+          }
+        }, 150);
+      } else {
+        setIsListening(false);
+      }
+    };
+
+    recognitionRef.current = recognition;
+
+    try {
+      recognition.start();
+    } catch {
+      wantsToListenRef.current = false;
+      setIsListening(false);
+    }
+  }, [SpeechRecognitionAPI]);
 
   const startListening = useCallback(
     (onResult: (text: string) => void) => {
@@ -62,72 +142,15 @@ export function useSpeechRecognition() {
         try { recognitionRef.current.abort(); } catch { /* ignore */ }
       }
 
-      const recognition = new SpeechRecognitionAPI();
-      recognition.continuous = true;
-      recognition.interimResults = true;
-      recognition.lang = 'pt-BR';
-
       onResultRef.current = onResult;
-      processedUpToRef.current = 0;
-
-      recognition.onstart = () => {
-        setIsListening(true);
-        setInterimText('');
-      };
-
-      recognition.onresult = (event: SpeechRecognitionEvent) => {
-        let finalTranscript = '';
-        let interimTranscript = '';
-
-        // Loop through ALL results, but only collect final transcripts
-        // from indices we haven't processed yet (prevents duplication
-        // on mobile where resultIndex can stay at 0).
-        for (let i = 0; i < event.results.length; i++) {
-          const result = event.results[i];
-          if (result.isFinal) {
-            if (i >= processedUpToRef.current) {
-              finalTranscript += result[0].transcript;
-              processedUpToRef.current = i + 1;
-            }
-          } else {
-            interimTranscript += result[0].transcript;
-          }
-        }
-
-        setInterimText(interimTranscript);
-
-        if (finalTranscript && onResultRef.current) {
-          onResultRef.current(finalTranscript);
-          setInterimText('');
-        }
-      };
-
-      recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-        // 'no-speech' and 'aborted' are not real errors
-        if (event.error !== 'no-speech' && event.error !== 'aborted') {
-          console.warn('Speech recognition error:', event.error);
-        }
-        setIsListening(false);
-        setInterimText('');
-      };
-
-      recognition.onend = () => {
-        setIsListening(false);
-        setInterimText('');
-      };
-
-      recognitionRef.current = recognition;
-
-      try {
-        recognition.start();
-      } catch {
-        setIsListening(false);
-      }
+      wantsToListenRef.current = true;
+      startSession();
     },
-    [SpeechRecognitionAPI]
+    [SpeechRecognitionAPI, startSession]
   );
 
   const stopListening = useCallback(() => {
+    wantsToListenRef.current = false;
     if (recognitionRef.current) {
       try { recognitionRef.current.stop(); } catch { /* ignore */ }
     }
@@ -138,6 +161,7 @@ export function useSpeechRecognition() {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      wantsToListenRef.current = false;
       if (recognitionRef.current) {
         try { recognitionRef.current.abort(); } catch { /* ignore */ }
       }
