@@ -13,7 +13,6 @@ import { usePrayerTracking } from './hooks/usePrayerTracking';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { useFontSize } from './hooks/useFontSize';
 import FontSizeControl from './components/shared/FontSizeControl';
-import FloatingFontSize from './components/shared/FloatingFontSize';
 import { format } from 'date-fns';
 import type { DeverSentarData } from './types';
 
@@ -133,7 +132,6 @@ export default function App() {
         <Route path="/retiro-anual" element={<RetiroAnualFlow />} />
       </Routes>
       <BottomNav />
-      <FloatingFontSize />
     </BrowserRouter>
   );
 }

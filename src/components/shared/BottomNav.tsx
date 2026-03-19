@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Home, BookOpen, NotebookPen, Heart } from 'lucide-react';
+import { useFontSize, type FontSizePreset } from '../../hooks/useFontSize';
 
 const navItems = [
   { path: '/', label: 'Início', icon: Home },
@@ -11,6 +13,8 @@ const navItems = [
 export default function BottomNav() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { preset, setPreset, presets, labels } = useFontSize();
+  const [showPicker, setShowPicker] = useState(false);
 
   // Hide nav during prayer flows
   const flowPaths = ['/oracao-pessoal', '/oracao-conjugal', '/dever-sentar', '/regra-vida', '/retiro-anual'];
@@ -37,6 +41,44 @@ export default function BottomNav() {
             </button>
           );
         })}
+
+        {/* Font size — blends in as a 5th nav item */}
+        <div className="relative">
+          <button
+            onClick={() => setShowPicker(!showPicker)}
+            className={`
+              flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-lg
+              transition-colors min-w-[60px]
+              ${showPicker ? 'text-ens-blue' : 'text-gray-400'}
+            `}
+          >
+            <span className="text-base font-bold leading-6">Aa</span>
+            <span className="text-[0.6875rem] font-medium">Texto</span>
+          </button>
+
+          {showPicker && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setShowPicker(false)} />
+              <div className="absolute bottom-full right-0 mb-2 z-50 bg-white rounded-xl shadow-lg border border-gray-200 p-2 w-40">
+                {presets.map((p: FontSizePreset) => (
+                  <button
+                    key={p}
+                    onClick={() => { setPreset(p); setShowPicker(false); }}
+                    className={`
+                      w-full py-1.5 px-3 rounded-lg text-xs font-medium text-left transition-all
+                      ${preset === p
+                        ? 'bg-ens-blue text-white'
+                        : 'text-ens-text hover:bg-gray-100'
+                      }
+                    `}
+                  >
+                    {labels[p]}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </nav>
   );
