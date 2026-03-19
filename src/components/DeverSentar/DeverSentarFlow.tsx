@@ -7,6 +7,7 @@ import { useTimer } from '../../hooks/useTimer';
 import { useFocusMode } from '../../hooks/useFocusMode';
 import TimerButton from '../shared/TimerButton';
 import FocusToggle from '../shared/FocusToggle';
+import FontSizeToggle from '../shared/FontSizeToggle';
 import { format } from 'date-fns';
 import type { DeverSentarData, DeverSentarLevelId } from '../../types';
 
@@ -1280,6 +1281,7 @@ export default function DeverSentarFlow() {
             <div className="flex items-center justify-between text-white/70 text-xs">
               <span>{level?.emoji} {step?.title}</span>
               <div className="flex items-center gap-2">
+                <FontSizeToggle />
                 <FocusToggle focusMode={focusMode} />
                 <span>{Math.round(progress)}%</span>
               </div>

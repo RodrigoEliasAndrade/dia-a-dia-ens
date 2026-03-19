@@ -8,6 +8,7 @@ import { useTimer } from '../../hooks/useTimer';
 import { useFocusMode } from '../../hooks/useFocusMode';
 import TimerButton from '../shared/TimerButton';
 import FocusToggle from '../shared/FocusToggle';
+import FontSizeToggle from '../shared/FontSizeToggle';
 import wisdomDrops from '../../data/wisdomDrops.json';
 import type { WisdomDrop } from '../../types';
 
@@ -1238,6 +1239,7 @@ export default function CardFlow() {
             <div className="flex items-center justify-between text-white/70 text-xs">
               <span>{level?.emoji} {step?.title}</span>
               <div className="flex items-center gap-2">
+                <FontSizeToggle />
                 <FocusToggle focusMode={focusMode} />
                 <span>{Math.round(progress)}%</span>
               </div>
