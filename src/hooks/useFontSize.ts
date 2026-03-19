@@ -35,11 +35,6 @@ export function useFontSize() {
   // Apply to <html> element whenever preset changes
   useEffect(() => {
     document.documentElement.style.fontSize = FONT_SIZE_MAP[preset];
-
-    // Cleanup: reset to browser default when unmounting
-    return () => {
-      document.documentElement.style.fontSize = '';
-    };
   }, [preset]);
 
   return {
