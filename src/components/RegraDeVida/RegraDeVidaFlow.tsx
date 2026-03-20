@@ -146,15 +146,33 @@ export default function RegraDeVidaFlow() {
   // ─── Check-in Handler ──────────────────────────────
 
   const handleCheckIn = (commitmentId: string) => {
-    setData(prev => ({
-      ...prev,
-      lastCompleted: today,
-      commitments: (prev.commitments ?? []).map(c =>
-        c.id === commitmentId && !c.completedDays.includes(today)
-          ? { ...c, completedDays: [...c.completedDays, today] }
-          : c
-      ),
-    }));
+    setData(prev => {
+      const updated = {
+        ...prev,
+        lastCompleted: today,
+        commitments: (prev.commitments ?? []).map(c =>
+          c.id === commitmentId && !c.completedDays.includes(today)
+            ? { ...c, completedDays: [...c.completedDays, today] }
+            : c
+        ),
+      };
+      // Auto-archive commitments that just hit 66 days
+      const justCompleted = updated.commitments.find(
+        c => c.id === commitmentId && c.completedDays.length >= HABIT_DAYS
+      );
+      if (justCompleted) {
+        updated.commitments = updated.commitments.filter(c => c.id !== commitmentId);
+        updated.history = [...(prev.history ?? []), {
+          commitmentText: justCompleted.text,
+          area: justCompleted.area,
+          startDate: justCompleted.createdAt,
+          endDate: today,
+          totalDays: justCompleted.completedDays.length,
+          status: 'completed' as const,
+        }];
+      }
+      return updated;
+    });
   };
 
   // ─── Archive Handler ───────────────────────────────
