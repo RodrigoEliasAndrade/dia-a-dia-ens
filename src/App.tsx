@@ -14,7 +14,7 @@ import { useLocalStorage } from './hooks/useLocalStorage';
 import { useFontSize } from './hooks/useFontSize';
 import FontSizeControl from './components/shared/FontSizeControl';
 import { format } from 'date-fns';
-import type { DeverSentarData, RegraDeVidaData } from './types';
+import type { DeverSentarData, RegraDeVidaData, RetiroAnualData } from './types';
 
 function HomePage() {
   const { isCompletedToday, getCompletedDates } = usePrayerTracking();
@@ -30,13 +30,22 @@ function HomePage() {
     history: [],
   });
 
+  const [retiroAnualData] = useLocalStorage<RetiroAnualData>('ens-retiro-anual', {
+    scheduledDate: '',
+    completedRetreats: [],
+  });
+
   const today = format(new Date(), 'yyyy-MM-dd');
   const currentMonth = format(new Date(), 'yyyy-MM');
+  const currentYear = new Date().getFullYear().toString();
   const deverSentarDoneThisMonth = deverSentarData.completions.some(
     c => c.date.startsWith(currentMonth)
   );
   const regraDeVidaDoneToday = (regraDeVidaData.commitments ?? []).some(
     c => c.status === 'active' && c.completedDays?.includes(today)
+  );
+  const retiroCompletedThisYear = (retiroAnualData.completedRetreats ?? []).some(
+    r => r.completedAt.startsWith(currentYear)
   );
 
   const completedToday: Record<string, boolean> = {
@@ -44,7 +53,7 @@ function HomePage() {
     'oracao-conjugal': isCompletedToday('conjugal'),
     'dever-sentar': deverSentarDoneThisMonth,
     'regra-vida': regraDeVidaDoneToday,
-    'retiro-anual': false,
+    'retiro-anual': retiroCompletedThisYear,
   };
 
   return (

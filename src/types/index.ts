@@ -70,10 +70,15 @@ export interface RegraDeVidaData {
   history: RegraDeVidaHistoryEntry[];
 }
 
+export interface RetiroAnualEntry {
+  date: string;           // When the retreat happened
+  completedAt: string;    // When user finished the flow
+  notes: Record<string, string>;  // All notes keyed by step ID
+}
+
 export interface RetiroAnualData {
-  lastCompleted: string;
-  yearCompleted: boolean;
-  notes?: string;
+  scheduledDate: string;              // ISO date for next retreat ('' = not set)
+  completedRetreats: RetiroAnualEntry[];  // History of past retreats
 }
 
 export interface LiturgyData {

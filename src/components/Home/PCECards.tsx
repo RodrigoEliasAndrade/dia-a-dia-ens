@@ -1,8 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight, Check } from 'lucide-react';
 import { useLocalStorage } from '../../hooks/useLocalStorage';
-import { format } from 'date-fns';
-import type { PCECard, RegraDeVidaData } from '../../types';
+import { format, parseISO, differenceInDays, isToday, isFuture } from 'date-fns';
+import type { PCECard, RegraDeVidaData, RetiroAnualData } from '../../types';
 
 const HABIT_DAYS = 66;
 
@@ -67,8 +67,32 @@ export default function PCECards({ completedToday }: PCECardsProps) {
     history: [],
   });
 
+  const [retiroData] = useLocalStorage<RetiroAnualData>('ens-retiro-anual', {
+    scheduledDate: '',
+    completedRetreats: [],
+  });
+
   const today = format(new Date(), 'yyyy-MM-dd');
   const activeCommitments = (regraData.commitments ?? []).filter(c => c.status === 'active');
+
+  // Retiro countdown logic
+  const getRetiroSubtitle = (): string => {
+    const currentYear = new Date().getFullYear().toString();
+    const completedThisYear = (retiroData.completedRetreats ?? []).some(
+      r => r.completedAt.startsWith(currentYear)
+    );
+    if (completedThisYear) return 'Retiro concluído ✅';
+
+    if (retiroData.scheduledDate) {
+      const scheduled = parseISO(retiroData.scheduledDate);
+      if (isToday(scheduled)) return 'Hoje é o dia! 🙏';
+      if (isFuture(scheduled)) {
+        const days = differenceInDays(scheduled, new Date());
+        return `Em ${days} ${days === 1 ? 'dia' : 'dias'}`;
+      }
+    }
+    return 'Agende seu retiro';
+  };
 
   const handleCheckIn = (e: React.MouseEvent, commitmentId: string) => {
     e.stopPropagation(); // Don't navigate to the flow
@@ -136,7 +160,9 @@ export default function PCECards({ completedToday }: PCECardsProps) {
                     <span className="font-semibold text-ens-text">{card.title}</span>
                     {done && <Check className="w-4 h-4 text-green-600" />}
                   </div>
-                  <span className="text-sm text-ens-text-light">{card.subtitle}</span>
+                  <span className="text-sm text-ens-text-light">
+                    {card.id === 'retiro-anual' ? getRetiroSubtitle() : card.subtitle}
+                  </span>
                   <div className="mt-1">
                     <span className="text-xs px-2 py-0.5 rounded-full bg-ens-blue/10 text-ens-blue font-medium">
                       {card.frequency}
