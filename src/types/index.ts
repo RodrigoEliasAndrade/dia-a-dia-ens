@@ -46,10 +46,28 @@ export interface OracaoPessoalData {
   completions: string[]; // ISO dates
 }
 
+export interface RegraDeVidaCommitment {
+  id: string;              // UUID
+  text: string;            // User's free-text commitment
+  area: string;            // Area ID (oracao, palavra, etc.) or 'custom'
+  createdAt: string;       // ISO date when commitment was set
+  completedDays: string[]; // Array of ISO dates when user checked in
+  status: 'active' | 'completed' | 'archived';
+}
+
+export interface RegraDeVidaHistoryEntry {
+  commitmentText: string;
+  area: string;
+  startDate: string;
+  endDate: string;
+  totalDays: number;
+  status: 'completed' | 'archived';
+}
+
 export interface RegraDeVidaData {
   lastCompleted: string;
-  monthlyCompleted: boolean;
-  notes?: string;
+  commitments: RegraDeVidaCommitment[];
+  history: RegraDeVidaHistoryEntry[];
 }
 
 export interface RetiroAnualData {

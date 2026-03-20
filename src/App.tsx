@@ -14,7 +14,7 @@ import { useLocalStorage } from './hooks/useLocalStorage';
 import { useFontSize } from './hooks/useFontSize';
 import FontSizeControl from './components/shared/FontSizeControl';
 import { format } from 'date-fns';
-import type { DeverSentarData } from './types';
+import type { DeverSentarData, RegraDeVidaData } from './types';
 
 function HomePage() {
   const { isCompletedToday, getCompletedDates } = usePrayerTracking();
@@ -24,16 +24,26 @@ function HomePage() {
     completions: [],
   });
 
+  const [regraDeVidaData] = useLocalStorage<RegraDeVidaData>('ens-regra-vida', {
+    lastCompleted: '',
+    commitments: [],
+    history: [],
+  });
+
+  const today = format(new Date(), 'yyyy-MM-dd');
   const currentMonth = format(new Date(), 'yyyy-MM');
   const deverSentarDoneThisMonth = deverSentarData.completions.some(
     c => c.date.startsWith(currentMonth)
+  );
+  const regraDeVidaDoneToday = (regraDeVidaData.commitments ?? []).some(
+    c => c.status === 'active' && c.completedDays?.includes(today)
   );
 
   const completedToday: Record<string, boolean> = {
     'oracao-pessoal': isCompletedToday('pessoal'),
     'oracao-conjugal': isCompletedToday('conjugal'),
     'dever-sentar': deverSentarDoneThisMonth,
-    'regra-vida': false,
+    'regra-vida': regraDeVidaDoneToday,
     'retiro-anual': false,
   };
 
