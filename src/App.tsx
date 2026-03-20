@@ -13,7 +13,6 @@ import PCEDetailPage from './components/PCEs/PCEDetailPage';
 import { usePrayerTracking } from './hooks/usePrayerTracking';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { useFontSize } from './hooks/useFontSize';
-import FontSizeControl from './components/shared/FontSizeControl';
 import { format } from 'date-fns';
 import type { DeverSentarData, RegraDeVidaData, RetiroAnualData } from './types';
 
@@ -130,9 +129,6 @@ function CasalPage() {
           "A oração conjugal é o respiro do amor. Não é um luxo, é oxigênio."
         </p>
         <p className="text-xs text-ens-text-light mt-2 text-right">— Padre Henri Caffarel</p>
-      </div>
-      <div className="mt-6">
-        <FontSizeControl />
       </div>
     </div>
   );
