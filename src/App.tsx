@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import Header from './components/Home/Header';
 import Calendar from './components/Home/Calendar';
 import PCECards from './components/Home/PCECards';
@@ -9,6 +9,7 @@ import DeverSentarFlow from './components/DeverSentar/DeverSentarFlow';
 import RegraDeVidaFlow from './components/RegraDeVida/RegraDeVidaFlow';
 import RetiroAnualFlow from './components/RetiroAnual/RetiroAnualFlow';
 import DiarioPage from './components/Diario/DiarioPage';
+import PCEDetailPage from './components/PCEs/PCEDetailPage';
 import { usePrayerTracking } from './hooks/usePrayerTracking';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { useFontSize } from './hooks/useFontSize';
@@ -66,34 +67,38 @@ function HomePage() {
 }
 
 function PCEsPage() {
+  const navigate = useNavigate();
+
+  const pces = [
+    { id: 'oracao-pessoal', num: 1, title: 'Oração Pessoal Diária', emoji: '🙏', desc: 'Encontro pessoal com Deus, todos os dias' },
+    { id: 'oracao-conjugal', num: 2, title: 'Oração Conjugal Diária', emoji: '💑', desc: 'Oração do casal, frente a frente' },
+    { id: 'dever-sentar', num: 3, title: 'Dever de Sentar-se Mensal', emoji: '📋', desc: 'Balanço mensal da vida conjugal' },
+    { id: 'regra-vida', num: 4, title: 'Regra de Vida', emoji: '📖', desc: 'Compromissos de crescimento espiritual' },
+    { id: 'retiro-anual', num: 5, title: 'Retiro Anual', emoji: '⛰️', desc: 'Tempo forte de encontro com Deus' },
+  ];
+
   return (
     <div className="pb-24 px-4 pt-16">
       <h1 className="text-xl font-bold text-ens-blue mb-4">Pontos Concretos de Esforço</h1>
       <p className="text-ens-text-light text-sm">
         Os PCEs são os compromissos práticos que cada casal assume para crescer na fé e no amor.
-        São o coração da espiritualidade ENS.
+        São o coração da espiritualidade ENS. Toque em cada um para saber mais.
       </p>
       <div className="mt-6 space-y-4">
-        <div className="bg-white rounded-xl p-4 shadow-sm">
-          <h3 className="font-semibold text-ens-blue">1. Oração Pessoal Diária 🙏</h3>
-          <p className="text-sm text-ens-text-light mt-1">Encontro pessoal com Deus, todos os dias</p>
-        </div>
-        <div className="bg-white rounded-xl p-4 shadow-sm">
-          <h3 className="font-semibold text-ens-blue">2. Oração Conjugal Diária 💑</h3>
-          <p className="text-sm text-ens-text-light mt-1">Oração do casal, frente a frente</p>
-        </div>
-        <div className="bg-white rounded-xl p-4 shadow-sm">
-          <h3 className="font-semibold text-ens-blue">3. Dever de Sentar-se Mensal 📋</h3>
-          <p className="text-sm text-ens-text-light mt-1">Balanço mensal da vida conjugal</p>
-        </div>
-        <div className="bg-white rounded-xl p-4 shadow-sm">
-          <h3 className="font-semibold text-ens-blue">4. Regra de Vida 📖</h3>
-          <p className="text-sm text-ens-text-light mt-1">Compromissos de crescimento espiritual</p>
-        </div>
-        <div className="bg-white rounded-xl p-4 shadow-sm">
-          <h3 className="font-semibold text-ens-blue">5. Retiro Anual ⛰️</h3>
-          <p className="text-sm text-ens-text-light mt-1">Tempo forte de encontro com Deus</p>
-        </div>
+        {pces.map(pce => (
+          <button
+            key={pce.id}
+            onClick={() => navigate(`/pces/${pce.id}`)}
+            className="w-full bg-white rounded-xl p-4 shadow-sm flex items-center gap-4 text-left transition-all active:scale-[0.98]"
+          >
+            <span className="text-3xl">{pce.emoji}</span>
+            <div className="flex-1">
+              <h3 className="font-semibold text-ens-blue">{pce.num}. {pce.title}</h3>
+              <p className="text-sm text-ens-text-light mt-0.5">{pce.desc}</p>
+            </div>
+            <span className="text-ens-text-light text-lg">›</span>
+          </button>
+        ))}
       </div>
     </div>
   );
@@ -142,6 +147,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/pces" element={<PCEsPage />} />
+        <Route path="/pces/:pceId" element={<PCEDetailPage />} />
         <Route path="/diario" element={<DiarioPage />} />
         <Route path="/casal" element={<CasalPage />} />
         <Route path="/oracao-pessoal" element={<OracaoPessoalFlow />} />
