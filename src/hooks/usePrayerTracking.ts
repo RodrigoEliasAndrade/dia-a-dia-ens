@@ -95,7 +95,10 @@ export function usePrayerTracking() {
   };
 
   const getCompletedDates = () => {
-    return conjugalData.completions.map(c => c.date);
+    const conjugalDates = conjugalData.completions.map(c => c.date);
+    const pessoalDates = pessoalData.completions;
+    // Merge and deduplicate
+    return [...new Set([...conjugalDates, ...pessoalDates])];
   };
 
   return {
