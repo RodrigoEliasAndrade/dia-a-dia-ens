@@ -57,7 +57,7 @@ export const pceContent: PCEContentData[] = [
         items: [
           { text: 'Escolha um horário fixo — de preferência pela manhã, quando a mente está fresca.', highlight: true },
           { text: 'Encontre um lugar tranquilo — pode ser um canto da casa, uma capela, ou qualquer espaço de silêncio.' },
-          { text: 'Comece com 10-15 minutos e vá aumentando. A fidelidade importa mais que a duração.' },
+          { text: 'Comece com o tempo que tiver disponível. A fidelidade importa mais que a duração.' },
           { text: 'Use a Palavra de Deus como ponto de partida — o Evangelho do dia é um excelente guia.' },
           { text: 'Métodos: Lectio Divina (leitura orante), Meditação Inaciana (imaginação), ou simplesmente ler e ficar em silêncio.' },
           { text: 'Termine anotando uma palavra ou frase que tocou seu coração — isso alimenta o Diário de Oração.' },
@@ -129,7 +129,7 @@ export const pceContent: PCEContentData[] = [
           { text: 'Partilhem: "O que me tocou?" — cada um diz uma palavra ou frase que falou ao coração.' },
           { text: 'Rezem intenções: pelos filhos, pela família, pelos que sofrem, pela equipe.' },
           { text: 'Terminem com um Pai-Nosso, uma Ave-Maria, ou simplesmente em silêncio juntos.' },
-          { text: '10 minutos bastam. Não é o tempo que importa, é a fidelidade.' },
+          { text: 'Usem o tempo que tiverem. Não é o tempo que importa, é a fidelidade. O casal já estar junto em oração já é uma graça.' },
         ],
       },
       {
@@ -192,7 +192,7 @@ export const pceContent: PCEContentData[] = [
         emoji: '🎯',
         items: [
           { text: 'Marquem um dia fixo no mês (ex: dia 15). Tratem como compromisso sagrado.', highlight: true },
-          { text: 'Reservem pelo menos 30 minutos a 1 hora, sem filhos, sem celular.' },
+          { text: 'Reservem o tempo que tiverem, sem filhos, sem celular. O importante é sentar e conversar.' },
           { text: 'Comecem com uma breve oração pedindo a luz do Espírito Santo.' },
           { text: 'Revisem juntos: nosso amor conjugal, nossa oração, nossa família, nosso serviço.' },
           { text: 'Usem frases que começam com "Eu sinto..." em vez de "Você sempre...".' },
