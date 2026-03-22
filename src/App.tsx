@@ -10,6 +10,9 @@ import RegraDeVidaFlow from './components/RegraDeVida/RegraDeVidaFlow';
 import RetiroAnualFlow from './components/RetiroAnual/RetiroAnualFlow';
 import DiarioPage from './components/Diario/DiarioPage';
 import PCEDetailPage from './components/PCEs/PCEDetailPage';
+import LoginPage from './components/Auth/LoginPage';
+import CoupleSetup from './components/Casal/CoupleSetup';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { usePrayerTracking } from './hooks/usePrayerTracking';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { useFontSize } from './hooks/useFontSize';
@@ -107,11 +110,28 @@ function PCEsPage() {
 
 function CasalPage() {
   const { conjugalData } = usePrayerTracking();
+  const { user, loading } = useAuth();
 
+  if (loading) {
+    return (
+      <div className="pb-24 px-4 pt-16 flex items-center justify-center min-h-[50vh]">
+        <div className="text-ens-text-light text-sm">Carregando...</div>
+      </div>
+    );
+  }
+
+  // Not logged in — show login prompt
+  if (!user) {
+    return <LoginPage />;
+  }
+
+  // Logged in — show couple setup + stats
   return (
     <div className="pb-24 px-4 pt-16">
       <h1 className="text-xl font-bold text-ens-blue mb-4">Nosso Casal</h1>
-      <div className="bg-white rounded-xl p-6 shadow-sm text-center">
+
+      {/* Couple stats */}
+      <div className="bg-white rounded-xl p-6 shadow-sm text-center mb-4">
         <div className="text-5xl mb-4">💑</div>
         <div className="grid grid-cols-2 gap-4 mt-4">
           <div>
@@ -124,6 +144,11 @@ function CasalPage() {
           </div>
         </div>
       </div>
+
+      {/* Couple connection */}
+      <CoupleSetup />
+
+      {/* Caffarel quote */}
       <div className="mt-6 bg-ens-blue/5 rounded-xl p-4 border-l-4 border-ens-blue">
         <p className="text-sm text-ens-text italic">
           "A oração conjugal é o respiro do amor. Não é um luxo, é oxigênio."
@@ -134,7 +159,7 @@ function CasalPage() {
   );
 }
 
-export default function App() {
+function AppContent() {
   // Apply saved font-size preference on mount (scales all rem values)
   useFontSize();
 
@@ -154,5 +179,13 @@ export default function App() {
       </Routes>
       <BottomNav />
     </BrowserRouter>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
