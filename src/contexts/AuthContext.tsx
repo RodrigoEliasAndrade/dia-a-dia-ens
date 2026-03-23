@@ -13,7 +13,8 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
-  signInWithMagicLink: (email: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -70,13 +71,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signInWithMagicLink = async (email: string) => {
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/dia-a-dia-ens/`,
-      },
-    });
+  const signUp = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signUp({ email, password });
+    return { error: error as Error | null };
+  };
+
+  const signIn = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     return { error: error as Error | null };
   };
 
@@ -102,7 +103,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session,
       profile,
       loading,
-      signInWithMagicLink,
+      signUp,
+      signIn,
       signOut,
       updateProfile,
       refreshProfile,

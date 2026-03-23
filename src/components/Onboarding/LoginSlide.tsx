@@ -1,67 +1,66 @@
 import { useState } from 'react';
-import { Mail, CheckCircle, Loader } from 'lucide-react';
+import { Lock, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function LoginSlide() {
-  const { signInWithMagicLink } = useAuth();
+  const { signUp, signIn } = useAuth();
   const [email, setEmail] = useState('');
-  const [sent, setSent] = useState(false);
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isLogin, setIsLogin] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) return;
+    if (!email.trim() || !password.trim()) return;
+
+    if (password.length < 6) {
+      setError('A senha deve ter pelo menos 6 caracteres.');
+      return;
+    }
 
     setLoading(true);
     setError('');
 
-    const { error } = await signInWithMagicLink(email.trim());
-    if (error) {
-      setError('Não foi possível enviar o link. Tente novamente.');
+    if (isLogin) {
+      // Existing user — sign in
+      const { error } = await signIn(email.trim(), password);
+      if (error) {
+        setError('E-mail ou senha incorretos.');
+      }
     } else {
-      setSent(true);
+      // New user — sign up (auto-confirms, no email verification)
+      const { error } = await signUp(email.trim(), password);
+      if (error) {
+        // If user already exists, try to sign in instead
+        if (error.message?.includes('already registered')) {
+          const { error: loginError } = await signIn(email.trim(), password);
+          if (loginError) {
+            setError('E-mail já cadastrado. Verifique sua senha.');
+          }
+        } else {
+          setError('Erro ao criar conta. Tente novamente.');
+        }
+      }
     }
     setLoading(false);
   };
 
-  // After magic link sent — waiting state
-  if (sent) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[85vh] px-8 text-center animate-fade-in">
-        <CheckCircle className="w-16 h-16 text-green-500 mb-4" />
-        <h2 className="text-xl font-bold text-ens-blue mb-3">Link enviado!</h2>
-        <p className="text-sm text-ens-text-light mb-2 max-w-xs">
-          Verifique seu e-mail <span className="font-semibold text-ens-text">{email}</span> e
-          clique no link para entrar.
-        </p>
-        <div className="flex items-center gap-2 mt-4 text-ens-text-light">
-          <Loader className="w-4 h-4 animate-spin" />
-          <p className="text-xs">Aguardando confirmação...</p>
-        </div>
-        <p className="text-xs text-ens-text-light mt-6">
-          Não recebeu? Verifique o spam ou{' '}
-          <button
-            onClick={() => { setSent(false); setEmail(''); }}
-            className="text-ens-blue font-medium underline"
-          >
-            tente novamente
-          </button>
-        </p>
-      </div>
-    );
-  }
-
-  // Login form
   return (
     <div className="flex flex-col items-center justify-center min-h-[85vh] px-6 text-center animate-fade-in">
       <div className="w-14 h-14 bg-ens-blue/10 rounded-full flex items-center justify-center mb-4">
-        <Mail className="w-7 h-7 text-ens-blue" />
+        <Lock className="w-7 h-7 text-ens-blue" />
       </div>
 
-      <h2 className="text-xl font-bold text-ens-blue mb-2">Criar sua conta</h2>
+      <h2 className="text-xl font-bold text-ens-blue mb-2">
+        {isLogin ? 'Entrar na conta' : 'Criar sua conta'}
+      </h2>
       <p className="text-sm text-ens-text-light mb-6 max-w-xs">
-        Enviaremos um link mágico para seu e-mail. Sem senha necessária — simples e seguro.
+        {isLogin
+          ? 'Use seu e-mail e senha para entrar.'
+          : 'Escolha um e-mail e uma senha. Rápido e simples.'
+        }
       </p>
 
       <form onSubmit={handleSubmit} className="w-full max-w-sm">
@@ -69,31 +68,54 @@ export default function LoginSlide() {
           type="email"
           value={email}
           onChange={e => setEmail(e.target.value)}
-          placeholder="seu@email.com"
+          placeholder="Seu e-mail"
           required
-          autoFocus
-          className="w-full px-4 py-3.5 rounded-xl border border-gray-200 bg-white text-sm text-ens-text text-center
+          autoComplete="email"
+          className="w-full px-4 py-3.5 rounded-xl border border-gray-200 bg-white text-sm text-ens-text
             placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-ens-blue/30 mb-3"
         />
 
+        <div className="relative mb-3">
+          <input
+            type={showPassword ? 'text' : 'password'}
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            placeholder="Escolha uma senha"
+            required
+            minLength={6}
+            autoComplete={isLogin ? 'current-password' : 'new-password'}
+            className="w-full px-4 py-3.5 rounded-xl border border-gray-200 bg-white text-sm text-ens-text
+              placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-ens-blue/30 pr-12"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400"
+          >
+            {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+          </button>
+        </div>
+
         {error && (
-          <p className="text-xs text-red-500 mb-3">{error}</p>
+          <p className="text-xs text-red-500 mb-3 text-left">{error}</p>
         )}
 
         <button
           type="submit"
-          disabled={loading || !email.trim()}
+          disabled={loading || !email.trim() || !password.trim()}
           className="w-full py-3.5 rounded-xl bg-ens-blue text-white font-semibold
             disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.97] shadow-lg"
         >
-          {loading ? 'Enviando...' : 'Enviar link de acesso'}
+          {loading ? 'Aguarde...' : (isLogin ? 'Entrar' : 'Criar conta')}
         </button>
       </form>
 
-      <p className="text-xs text-ens-text-light mt-6 max-w-xs">
-        Ao criar sua conta, você poderá sincronizar com seu cônjuge e manter
-        seus dados seguros.
-      </p>
+      <button
+        onClick={() => { setIsLogin(!isLogin); setError(''); }}
+        className="mt-4 text-sm text-ens-blue font-medium"
+      >
+        {isLogin ? 'Não tem conta? Criar agora' : 'Já tem conta? Entrar'}
+      </button>
     </div>
   );
 }
