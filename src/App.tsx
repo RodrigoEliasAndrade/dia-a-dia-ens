@@ -10,8 +10,8 @@ import RegraDeVidaFlow from './components/RegraDeVida/RegraDeVidaFlow';
 import RetiroAnualFlow from './components/RetiroAnual/RetiroAnualFlow';
 import DiarioPage from './components/Diario/DiarioPage';
 import PCEDetailPage from './components/PCEs/PCEDetailPage';
-import LoginPage from './components/Auth/LoginPage';
 import CoupleSetup from './components/Casal/CoupleSetup';
+import OnboardingFlow from './components/Onboarding/OnboardingFlow';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { usePrayerTracking } from './hooks/usePrayerTracking';
 import { useLocalStorage } from './hooks/useLocalStorage';
@@ -110,22 +110,7 @@ function PCEsPage() {
 
 function CasalPage() {
   const { conjugalData } = usePrayerTracking();
-  const { user, loading } = useAuth();
 
-  if (loading) {
-    return (
-      <div className="pb-24 px-4 pt-16 flex items-center justify-center min-h-[50vh]">
-        <div className="text-ens-text-light text-sm">Carregando...</div>
-      </div>
-    );
-  }
-
-  // Not logged in — show login prompt
-  if (!user) {
-    return <LoginPage />;
-  }
-
-  // Logged in — show couple setup + stats
   return (
     <div className="pb-24 px-4 pt-16">
       <h1 className="text-xl font-bold text-ens-blue mb-4">Nosso Casal</h1>
@@ -162,6 +147,25 @@ function CasalPage() {
 function AppContent() {
   // Apply saved font-size preference on mount (scales all rem values)
   useFontSize();
+
+  const { user, loading } = useAuth();
+  const [onboardingDone, setOnboardingDone] = useLocalStorage('ens-onboarding-done', false);
+
+  // Show loading while checking auth
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-ens-cream flex items-center justify-center">
+        <div className="text-ens-text-light text-sm">Carregando...</div>
+      </div>
+    );
+  }
+
+  // Show onboarding if not logged in or hasn't completed it
+  if (!user || !onboardingDone) {
+    return (
+      <OnboardingFlow onComplete={() => setOnboardingDone(true)} />
+    );
+  }
 
   return (
     <BrowserRouter basename="/dia-a-dia-ens">
