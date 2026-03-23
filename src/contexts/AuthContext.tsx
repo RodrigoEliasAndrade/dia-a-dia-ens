@@ -44,13 +44,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Listen for auth changes
   useEffect(() => {
+    // Safety timeout — never block the app for more than 3 seconds
+    const timeout = setTimeout(() => setLoading(false), 3000);
+
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      clearTimeout(timeout);
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchProfile(session.user.id);
       }
+      setLoading(false);
+    }).catch(() => {
+      clearTimeout(timeout);
       setLoading(false);
     });
 
