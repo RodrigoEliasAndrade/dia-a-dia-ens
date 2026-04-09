@@ -1,15 +1,19 @@
 import { useState } from 'react';
 import { Heart, CheckCircle, LogOut, Edit3, Clock } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { supabase } from '../../lib/supabase';
+
+const APP_VERSION = 'v4-debug'; // change to confirm deploy
 
 export default function CoupleSetup() {
-  const { user, profile, signOut, setSpouseEmail } = useAuth();
+  const { user, profile, signOut, setSpouseEmail, refreshProfile } = useAuth();
   const [email, setEmail] = useState('');
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [debugLog, setDebugLog] = useState<string[]>([]);
+  const [repairing, setRepairing] = useState(false);
 
   if (!user) return null;
 
@@ -26,17 +30,15 @@ export default function CoupleSetup() {
       return;
     }
 
-    const log = (msg: string) => setDebugLog(prev => [...prev, `${new Date().toLocaleTimeString()} ${msg}`]);
-
-    log('1. Início — email: ' + email.trim());
+    addLog('1. Início — email: ' + email.trim());
     setLoading(true);
     setError('');
     setSuccess('');
 
     try {
-      log('2. Chamando setSpouseEmail...');
+      addLog('2. Chamando setSpouseEmail...');
       const { error: err } = await setSpouseEmail(email.trim());
-      log('3. Retornou — erro: ' + (err || 'nenhum'));
+      addLog('3. Retornou — erro: ' + (err || 'nenhum'));
       if (err) {
         setError(err);
       } else {
@@ -45,23 +47,82 @@ export default function CoupleSetup() {
         setEmail('');
       }
     } catch (e) {
-      log('EXCEPTION: ' + String(e));
+      addLog('EXCEPTION: ' + String(e));
       setError('Erro de conexão. Tente novamente.');
     } finally {
-      log('4. Fim — loading=false');
+      addLog('4. Fim — loading=false');
       setLoading(false);
     }
   };
 
+  const addLog = (msg: string) => setDebugLog(prev => [...prev, `${new Date().toLocaleTimeString()} ${msg}`]);
+
+  const handleRepairProfile = async () => {
+    setRepairing(true);
+    addLog('REPAIR: Iniciando...');
+
+    try {
+      // Step 1: Try to read profile
+      addLog('REPAIR: Lendo profile...');
+      const { data: existing, error: readErr } = await supabase
+        .from('profiles')
+        .select('id, display_name, couple_id, spouse_email')
+        .eq('id', user.id)
+        .single();
+
+      addLog(`REPAIR: Read result — data: ${JSON.stringify(existing)}, error: ${readErr?.message || 'none'}`);
+
+      if (existing) {
+        addLog('REPAIR: Profile existe! Atualizando state...');
+        await refreshProfile();
+        addLog('REPAIR: Done!');
+        setRepairing(false);
+        return;
+      }
+
+      // Step 2: Profile doesn't exist — create it
+      addLog('REPAIR: Profile não existe. Criando...');
+      const { data: inserted, error: insertErr } = await supabase
+        .from('profiles')
+        .insert({ id: user.id, display_name: null })
+        .select()
+        .single();
+
+      addLog(`REPAIR: Insert result — data: ${JSON.stringify(inserted)}, error: ${insertErr?.message || 'none'}`);
+
+      if (insertErr) {
+        addLog(`REPAIR: FALHOU — ${insertErr.message}`);
+      } else {
+        addLog('REPAIR: Profile criado! Recarregando...');
+        await refreshProfile();
+        addLog('REPAIR: Done!');
+      }
+    } catch (e) {
+      addLog(`REPAIR: EXCEPTION — ${String(e)}`);
+    }
+    setRepairing(false);
+  };
+
   // Debug info component (reusable)
   const DebugPanel = () => (
-    <div className="mt-4 bg-gray-900 text-green-400 text-xs font-mono p-3 rounded-xl max-h-60 overflow-auto">
-      <div className="text-yellow-400 mb-2">--- DIAGNÓSTICO ---</div>
+    <div className="mt-4 bg-gray-900 text-green-400 text-xs font-mono p-3 rounded-xl max-h-80 overflow-auto">
+      <div className="text-yellow-400 mb-2">--- DIAGNÓSTICO ({APP_VERSION}) ---</div>
       <div>user.id: {user.id?.slice(0, 8)}...</div>
       <div>user.email: {user.email}</div>
       <div>profile: {profile ? 'EXISTS' : 'NULL'}</div>
       <div>profile.couple_id: {profile?.couple_id || 'null'}</div>
       <div>profile.spouse_email: {profile?.spouse_email || 'null'}</div>
+
+      {!profile && (
+        <button
+          onClick={handleRepairProfile}
+          disabled={repairing}
+          className="mt-2 px-3 py-1.5 bg-red-600 text-white text-xs font-bold rounded-lg disabled:opacity-50"
+        >
+          {repairing ? 'Reparando...' : 'REPARAR PERFIL'}
+        </button>
+      )}
+
       {debugLog.length > 0 && (
         <>
           <div className="text-yellow-400 mt-2">--- LOG ---</div>
