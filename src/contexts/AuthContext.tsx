@@ -6,6 +6,7 @@ interface Profile {
   id: string;
   display_name: string | null;
   couple_id: string | null;
+  spouse_email: string | null;
 }
 
 interface AuthContextType {
@@ -18,6 +19,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<void>;
   refreshProfile: () => Promise<void>;
+  setSpouseEmail: (email: string) => Promise<{ error: string | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -32,7 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchProfile = async (userId: string) => {
     const { data } = await supabase
       .from('profiles')
-      .select('id, display_name, couple_id')
+      .select('id, display_name, couple_id, spouse_email')
       .eq('id', userId)
       .single();
     setProfile(data);
@@ -61,7 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
 
-    // Listen for changes
+    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         setSession(session);
@@ -75,7 +77,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    return () => subscription.unsubscribe();
+    // Realtime: auto-detect pairing when spouse signs up
+    let realtimeChannel: ReturnType<typeof supabase.channel> | null = null;
+
+    supabase.auth.getSession().then(({ data: { session: s } }) => {
+      if (s?.user) {
+        realtimeChannel = supabase
+          .channel('profile-pairing')
+          .on('postgres_changes', {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'profiles',
+            filter: `id=eq.${s.user.id}`,
+          }, (payload) => {
+            // Profile was updated (e.g., couple_id set by trigger)
+            setProfile(payload.new as Profile);
+          })
+          .subscribe();
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+      realtimeChannel?.unsubscribe();
+    };
   }, []);
 
   const signUp = async (email: string, password: string) => {
@@ -104,6 +129,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await fetchProfile(user.id);
   };
 
+  // Set spouse email — triggers auto-pairing via DB trigger
+  const setSpouseEmail = async (email: string): Promise<{ error: string | null }> => {
+    if (!user) return { error: 'Não autenticado' };
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ spouse_email: email.trim().toLowerCase() })
+      .eq('id', user.id);
+
+    if (error) return { error: error.message };
+
+    // Refresh profile — couple_id may have been set by the trigger
+    await fetchProfile(user.id);
+    return { error: null };
+  };
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -115,6 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut,
       updateProfile,
       refreshProfile,
+      setSpouseEmail,
     }}>
       {children}
     </AuthContext.Provider>

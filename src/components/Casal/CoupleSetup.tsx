@@ -1,145 +1,52 @@
 import { useState } from 'react';
-import { Heart, Copy, Share2, UserPlus, CheckCircle, LogOut } from 'lucide-react';
+import { Heart, CheckCircle, LogOut, Edit3, Clock } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase } from '../../lib/supabase';
 
 export default function CoupleSetup() {
-  const { user, profile, signOut, refreshProfile } = useAuth();
-  const [mode, setMode] = useState<'menu' | 'create' | 'join'>('menu');
-  const [inviteCode, setInviteCode] = useState('');
-  const [joinCode, setJoinCode] = useState('');
+  const { user, profile, signOut, setSpouseEmail } = useAuth();
+  const [email, setEmail] = useState('');
+  const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [copied, setCopied] = useState(false);
-
-  // ─── Create a new couple ───────────────────────
-  const handleCreateCouple = async () => {
-    if (!user) return;
-    setLoading(true);
-    setError('');
-
-    try {
-      // Generate a short invite code
-      const code = 'ENS-' + Math.random().toString(36).substring(2, 6).toUpperCase();
-
-      // Create couple
-      const { data: couple, error: coupleError } = await supabase
-        .from('couples')
-        .insert({ invite_code: code })
-        .select('id, invite_code')
-        .single();
-
-      if (coupleError || !couple) {
-        setError(coupleError?.message || 'Não foi possível criar o casal. Tente novamente.');
-        return;
-      }
-
-      // Link profile to couple
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ couple_id: couple.id })
-        .eq('id', user.id);
-
-      if (updateError) {
-        setError(`Erro ao vincular perfil: ${updateError.message}`);
-        return;
-      }
-
-      setInviteCode(couple.invite_code);
-      setMode('create');
-      await refreshProfile();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro de conexão. Tente novamente.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ─── Join an existing couple ───────────────────
-  const handleJoinCouple = async () => {
-    if (!user || !joinCode.trim()) return;
-    setLoading(true);
-    setError('');
-
-    try {
-      // Find couple by invite code
-      const { data: couple } = await supabase
-        .from('couples')
-        .select('id')
-        .eq('invite_code', joinCode.trim().toUpperCase())
-        .single();
-
-      if (!couple) {
-        setError('Código não encontrado. Verifique e tente novamente.');
-        setLoading(false);
-        return;
-      }
-
-      // Check if couple already has 2 members
-      const { count } = await supabase
-        .from('profiles')
-        .select('id', { count: 'exact', head: true })
-        .eq('couple_id', couple.id);
-
-      if (count && count >= 2) {
-        setError('Este casal já tem dois membros.');
-        setLoading(false);
-        return;
-      }
-
-      // Link profile to couple
-      const { error: linkError } = await supabase
-        .from('profiles')
-        .update({ couple_id: couple.id })
-        .eq('id', user.id);
-
-      if (linkError) {
-        setError(`Erro ao vincular perfil: ${linkError.message}`);
-        setLoading(false);
-        return;
-      }
-
-      await refreshProfile();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro de conexão. Tente novamente.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ─── Copy invite code ─────────────────────────
-  const handleCopy = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Fallback
-    }
-  };
-
-  // ─── Share invite ─────────────────────────────
-  const handleShare = async () => {
-    const code = inviteCode || profile?.couple_id;
-    if (!code) return;
-
-    const shareData = {
-      title: 'ENS Dia a Dia',
-      text: `Junte-se a mim no ENS Dia a Dia! Use o código: ${inviteCode}`,
-      url: `${window.location.origin}/dia-a-dia-ens/join/${inviteCode}`,
-    };
-
-    if (navigator.share) {
-      await navigator.share(shareData);
-    } else {
-      handleCopy(shareData.text + '\n' + shareData.url);
-    }
-  };
+  const [success, setSuccess] = useState('');
 
   if (!user) return null;
 
+  const handleSetSpouse = async () => {
+    if (!email.trim()) return;
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError('Digite um e-mail válido.');
+      return;
+    }
+
+    if (email.trim().toLowerCase() === user.email?.toLowerCase()) {
+      setError('Esse é o seu próprio e-mail.');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const { error: err } = await setSpouseEmail(email.trim());
+      if (err) {
+        setError(err);
+      } else {
+        setSuccess('E-mail salvo!');
+        setEditing(false);
+        setEmail('');
+      }
+    } catch {
+      setError('Erro de conexão. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // ─── Already paired ───────────────────────────
-  if (profile?.couple_id && mode === 'menu') {
+  if (profile?.couple_id) {
     return (
       <div className="space-y-4">
         <div className="bg-white rounded-xl p-5 shadow-sm text-center">
@@ -148,9 +55,14 @@ export default function CoupleSetup() {
           </div>
           <h3 className="font-semibold text-ens-blue mb-1">Casal conectado</h3>
           <p className="text-xs text-ens-text-light">
-            Seus dados de oração conjugal estão sincronizados
+            Seus dados de oração conjugal estão sincronizados.
           </p>
-          <p className="text-xs text-ens-text-light mt-2">
+          {profile.spouse_email && (
+            <p className="text-xs text-ens-text-light mt-2">
+              Cônjuge: <span className="font-medium">{profile.spouse_email}</span>
+            </p>
+          )}
+          <p className="text-xs text-ens-text-light mt-1">
             Logado como: <span className="font-medium">{user.email}</span>
           </p>
         </div>
@@ -166,127 +78,102 @@ export default function CoupleSetup() {
     );
   }
 
-  // ─── Create couple — show invite code ──────────
-  if (mode === 'create' && inviteCode) {
+  // ─── Waiting for spouse (email set, not yet paired) ───
+  if (profile?.spouse_email && !editing) {
     return (
-      <div className="bg-white rounded-xl p-5 shadow-sm">
-        <h3 className="font-semibold text-ens-blue text-center mb-4">Convide seu cônjuge</h3>
-
-        <div className="bg-ens-blue/5 rounded-xl p-4 text-center mb-4">
-          <p className="text-xs text-ens-text-light mb-1">Código do casal</p>
-          <p className="text-2xl font-bold text-ens-blue tracking-widest">{inviteCode}</p>
+      <div className="space-y-4">
+        <div className="bg-white rounded-xl p-5 shadow-sm text-center">
+          <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-3">
+            <Clock className="w-6 h-6 text-amber-600" />
+          </div>
+          <h3 className="font-semibold text-ens-blue mb-1">Aguardando cônjuge</h3>
+          <p className="text-sm text-ens-text-light mb-3">
+            Quando <span className="font-semibold text-ens-blue">{profile.spouse_email}</span> criar
+            a conta, vocês serão conectados automaticamente.
+          </p>
+          <p className="text-xs text-ens-text-light">
+            A conexão acontece em tempo real — não precisa atualizar a página.
+          </p>
         </div>
 
-        <div className="flex gap-2 mb-4">
-          <button
-            onClick={() => handleCopy(inviteCode)}
-            className="flex-1 py-2.5 rounded-lg bg-gray-100 text-sm font-medium text-ens-text flex items-center justify-center gap-2
-              hover:bg-gray-200 transition-colors"
-          >
-            <Copy className="w-4 h-4" />
-            {copied ? 'Copiado!' : 'Copiar'}
-          </button>
-          <button
-            onClick={handleShare}
-            className="flex-1 py-2.5 rounded-lg bg-ens-blue text-white text-sm font-medium flex items-center justify-center gap-2
-              hover:bg-ens-blue/90 transition-colors"
-          >
-            <Share2 className="w-4 h-4" />
-            Compartilhar
-          </button>
-        </div>
+        <button
+          onClick={() => { setEditing(true); setEmail(profile.spouse_email || ''); }}
+          className="w-full bg-white rounded-xl p-4 shadow-sm flex items-center gap-4 text-left transition-all active:scale-[0.98]"
+        >
+          <div className="w-10 h-10 bg-ens-blue/10 rounded-full flex items-center justify-center shrink-0">
+            <Edit3 className="w-5 h-5 text-ens-blue" />
+          </div>
+          <div>
+            <h4 className="font-semibold text-ens-blue text-sm">Alterar e-mail</h4>
+            <p className="text-xs text-ens-text-light">Errou o e-mail? Corrija aqui</p>
+          </div>
+        </button>
 
         <p className="text-xs text-ens-text-light text-center">
-          Envie este código para seu cônjuge. Ele(a) deve entrar no app,
-          ir em Casal → Entrar no Casal e digitar o código.
+          Logado como: <span className="font-medium">{user.email}</span>
         </p>
+
+        <button
+          onClick={signOut}
+          className="w-full flex items-center justify-center gap-2 py-2.5 text-sm text-ens-text-light hover:text-red-500 transition-colors"
+        >
+          <LogOut className="w-4 h-4" />
+          Sair da conta
+        </button>
       </div>
     );
   }
 
-  // ─── Join couple — enter code ──────────────────
-  if (mode === 'join') {
-    return (
+  // ─── Enter spouse email (first time or editing) ───
+  return (
+    <div className="space-y-4">
       <div className="bg-white rounded-xl p-5 shadow-sm">
-        <h3 className="font-semibold text-ens-blue text-center mb-4">Entrar no Casal</h3>
-
-        <p className="text-xs text-ens-text-light text-center mb-4">
-          Digite o código que seu cônjuge compartilhou com você
-        </p>
+        <div className="text-center mb-4">
+          <Heart className="w-10 h-10 text-ens-gold mx-auto mb-3" />
+          <h3 className="font-semibold text-ens-blue mb-1">
+            {editing ? 'Alterar e-mail do cônjuge' : 'Conectar com cônjuge'}
+          </h3>
+          <p className="text-xs text-ens-text-light">
+            Digite o e-mail que seu cônjuge usa (ou vai usar) para entrar no app.
+            Quando ele(a) criar a conta, a conexão será automática.
+          </p>
+        </div>
 
         <input
-          type="text"
-          value={joinCode}
-          onChange={e => setJoinCode(e.target.value.toUpperCase())}
-          placeholder="ENS-XXXX"
-          className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-center text-lg font-bold
-            tracking-widest text-ens-blue placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-ens-blue/30 mb-3"
-          maxLength={8}
+          type="email"
+          value={email}
+          onChange={e => setEmail(e.target.value)}
+          placeholder="email-do-conjuge@exemplo.com"
+          autoComplete="off"
+          className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-center text-sm
+            text-ens-blue placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-ens-gold/30 mb-3"
         />
 
         {error && <p className="text-xs text-red-500 text-center mb-3">{error}</p>}
+        {success && <p className="text-xs text-green-600 text-center mb-3">{success}</p>}
 
         <button
-          onClick={handleJoinCouple}
-          disabled={loading || joinCode.length < 5}
+          onClick={handleSetSpouse}
+          disabled={loading || !email.trim()}
           className="w-full py-3 rounded-xl bg-ens-gold text-white font-semibold
             disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
         >
-          {loading ? 'Conectando...' : 'Conectar'}
+          {loading ? 'Salvando...' : 'Salvar'}
         </button>
 
-        <button
-          onClick={() => { setMode('menu'); setError(''); }}
-          className="w-full mt-2 py-2 text-sm text-ens-text-light"
-        >
-          Voltar
-        </button>
-      </div>
-    );
-  }
-
-  // ─── Menu — choose create or join ──────────────
-  return (
-    <div className="space-y-3">
-      <div className="bg-white rounded-xl p-5 shadow-sm text-center">
-        <Heart className="w-10 h-10 text-ens-gold mx-auto mb-3" />
-        <h3 className="font-semibold text-ens-blue mb-1">Conectar com Cônjuge</h3>
-        <p className="text-xs text-ens-text-light mb-4">
-          Sincronize orações conjugais, retiro e dever de sentar
-        </p>
-        <p className="text-xs text-ens-text-light">
-          Logado como: <span className="font-medium">{user.email}</span>
-        </p>
+        {editing && (
+          <button
+            onClick={() => { setEditing(false); setError(''); setEmail(''); }}
+            className="w-full mt-2 py-2 text-sm text-ens-text-light"
+          >
+            Cancelar
+          </button>
+        )}
       </div>
 
-      <button
-        onClick={handleCreateCouple}
-        disabled={loading}
-        className="w-full bg-white rounded-xl p-4 shadow-sm flex items-center gap-4 text-left transition-all active:scale-[0.98]"
-      >
-        <div className="w-10 h-10 bg-ens-blue/10 rounded-full flex items-center justify-center shrink-0">
-          <Heart className="w-5 h-5 text-ens-blue" />
-        </div>
-        <div>
-          <h4 className="font-semibold text-ens-blue text-sm">Criar Casal</h4>
-          <p className="text-xs text-ens-text-light">Gere um código para convidar seu cônjuge</p>
-        </div>
-      </button>
-
-      <button
-        onClick={() => setMode('join')}
-        className="w-full bg-white rounded-xl p-4 shadow-sm flex items-center gap-4 text-left transition-all active:scale-[0.98]"
-      >
-        <div className="w-10 h-10 bg-ens-gold/10 rounded-full flex items-center justify-center shrink-0">
-          <UserPlus className="w-5 h-5 text-ens-gold" />
-        </div>
-        <div>
-          <h4 className="font-semibold text-ens-blue text-sm">Entrar no Casal</h4>
-          <p className="text-xs text-ens-text-light">Tenho um código do meu cônjuge</p>
-        </div>
-      </button>
-
-      {error && <p className="text-xs text-red-500 text-center">{error}</p>}
+      <p className="text-xs text-ens-text-light text-center">
+        Logado como: <span className="font-medium">{user.email}</span>
+      </p>
 
       <button
         onClick={signOut}
