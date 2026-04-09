@@ -33,14 +33,17 @@ export default function LoginSlide() {
       // New user — sign up (auto-confirms, no email verification)
       const { error } = await signUp(email.trim(), password);
       if (error) {
+        const msg = error.message || '';
         // If user already exists, try to sign in instead
-        if (error.message?.includes('already registered')) {
+        if (msg.includes('already registered') || msg.includes('already been registered')) {
           const { error: loginError } = await signIn(email.trim(), password);
           if (loginError) {
             setError('E-mail já cadastrado. Verifique sua senha.');
           }
+        } else if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+          setError('Sem conexão com o servidor. Verifique sua internet e tente novamente.');
         } else {
-          setError('Erro ao criar conta. Tente novamente.');
+          setError(msg || 'Erro ao criar conta. Tente novamente.');
         }
       }
     }

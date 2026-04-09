@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Heart, Copy, Share2, CheckCircle, UserPlus } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
@@ -24,6 +24,8 @@ export default function CoupleSlide({ onComplete }: SlideProps) {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState('');
   const [joined, setJoined] = useState(false);
+  // Guard against StrictMode double-mount creating duplicate couples
+  const createStartedRef = useRef(false);
 
   // Detect if this is App B (has code in URL)
   const urlCode = getInviteCodeFromURL();
@@ -36,7 +38,8 @@ export default function CoupleSlide({ onComplete }: SlideProps) {
 
     if (isAppB) {
       setJoinCode(urlCode!);
-    } else if (!inviteCode && !loading) {
+    } else if (!createStartedRef.current) {
+      createStartedRef.current = true;
       createCouple();
     }
   }, [user, profile]);
@@ -45,6 +48,7 @@ export default function CoupleSlide({ onComplete }: SlideProps) {
   const createCouple = async () => {
     if (!user) return;
     setLoading(true);
+    setError('');
 
     const code = 'ENS-' + Math.random().toString(36).substring(2, 6).toUpperCase();
 
@@ -55,19 +59,28 @@ export default function CoupleSlide({ onComplete }: SlideProps) {
       .single();
 
     if (coupleError || !couple) {
-      setError('Erro ao criar casal. Tente novamente.');
+      setError(coupleError?.message || 'Erro ao criar casal. Tente novamente.');
+      createStartedRef.current = false; // allow retry
       setLoading(false);
       return;
     }
 
-    await supabase
+    const { error: updateError } = await supabase
       .from('profiles')
       .update({ couple_id: couple.id })
       .eq('id', user.id);
 
+    if (updateError) {
+      setError(`Casal criado, mas falha ao vincular ao perfil: ${updateError.message}`);
+      createStartedRef.current = false; // allow retry
+      setLoading(false);
+      return;
+    }
+
     setInviteCode(couple.invite_code);
-    await refreshProfile();
     setLoading(false);
+    // Refresh in background — don't block UI
+    refreshProfile().catch(() => {});
   };
 
   // ─── App B: Join couple with code ─────────────
@@ -144,6 +157,26 @@ export default function CoupleSlide({ onComplete }: SlideProps) {
         <p className="text-sm text-ens-text-light">
           {isAppB ? 'Conectando ao casal...' : 'Preparando seu casal...'}
         </p>
+      </div>
+    );
+  }
+
+  // ─── Error state for App A (couple creation failed) ─────────
+  if (!isAppB && error && !inviteCode) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[85vh] px-6 text-center animate-fade-in">
+        <div className="text-4xl mb-4">⚠️</div>
+        <h2 className="text-lg font-bold text-ens-blue mb-2">Não conseguimos preparar seu casal</h2>
+        <p className="text-xs text-red-500 mb-6 max-w-xs">{error}</p>
+        <button
+          onClick={createCouple}
+          className="w-full max-w-sm py-3.5 rounded-xl bg-ens-blue text-white font-semibold mb-3"
+        >
+          Tentar novamente
+        </button>
+        <button onClick={onComplete} className="text-sm text-ens-text-light">
+          Pular por agora
+        </button>
       </div>
     );
   }
