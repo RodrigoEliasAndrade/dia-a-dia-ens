@@ -18,32 +18,41 @@ export default function CoupleSetup() {
     setLoading(true);
     setError('');
 
-    // Generate a short invite code
-    const code = 'ENS-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+    try {
+      // Generate a short invite code
+      const code = 'ENS-' + Math.random().toString(36).substring(2, 6).toUpperCase();
 
-    // Create couple
-    const { data: couple, error: coupleError } = await supabase
-      .from('couples')
-      .insert({ invite_code: code })
-      .select('id, invite_code')
-      .single();
+      // Create couple
+      const { data: couple, error: coupleError } = await supabase
+        .from('couples')
+        .insert({ invite_code: code })
+        .select('id, invite_code')
+        .single();
 
-    if (coupleError || !couple) {
-      setError('Não foi possível criar o casal. Tente novamente.');
+      if (coupleError || !couple) {
+        setError(coupleError?.message || 'Não foi possível criar o casal. Tente novamente.');
+        return;
+      }
+
+      // Link profile to couple
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ couple_id: couple.id })
+        .eq('id', user.id);
+
+      if (updateError) {
+        setError(`Erro ao vincular perfil: ${updateError.message}`);
+        return;
+      }
+
+      setInviteCode(couple.invite_code);
+      setMode('create');
+      await refreshProfile();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro de conexão. Tente novamente.');
+    } finally {
       setLoading(false);
-      return;
     }
-
-    // Link profile to couple
-    await supabase
-      .from('profiles')
-      .update({ couple_id: couple.id })
-      .eq('id', user.id);
-
-    setInviteCode(couple.invite_code);
-    setMode('create');
-    await refreshProfile();
-    setLoading(false);
   };
 
   // ─── Join an existing couple ───────────────────
@@ -52,39 +61,50 @@ export default function CoupleSetup() {
     setLoading(true);
     setError('');
 
-    // Find couple by invite code
-    const { data: couple } = await supabase
-      .from('couples')
-      .select('id')
-      .eq('invite_code', joinCode.trim().toUpperCase())
-      .single();
+    try {
+      // Find couple by invite code
+      const { data: couple } = await supabase
+        .from('couples')
+        .select('id')
+        .eq('invite_code', joinCode.trim().toUpperCase())
+        .single();
 
-    if (!couple) {
-      setError('Código não encontrado. Verifique e tente novamente.');
+      if (!couple) {
+        setError('Código não encontrado. Verifique e tente novamente.');
+        setLoading(false);
+        return;
+      }
+
+      // Check if couple already has 2 members
+      const { count } = await supabase
+        .from('profiles')
+        .select('id', { count: 'exact', head: true })
+        .eq('couple_id', couple.id);
+
+      if (count && count >= 2) {
+        setError('Este casal já tem dois membros.');
+        setLoading(false);
+        return;
+      }
+
+      // Link profile to couple
+      const { error: linkError } = await supabase
+        .from('profiles')
+        .update({ couple_id: couple.id })
+        .eq('id', user.id);
+
+      if (linkError) {
+        setError(`Erro ao vincular perfil: ${linkError.message}`);
+        setLoading(false);
+        return;
+      }
+
+      await refreshProfile();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro de conexão. Tente novamente.');
+    } finally {
       setLoading(false);
-      return;
     }
-
-    // Check if couple already has 2 members
-    const { count } = await supabase
-      .from('profiles')
-      .select('id', { count: 'exact', head: true })
-      .eq('couple_id', couple.id);
-
-    if (count && count >= 2) {
-      setError('Este casal já tem dois membros.');
-      setLoading(false);
-      return;
-    }
-
-    // Link profile to couple
-    await supabase
-      .from('profiles')
-      .update({ couple_id: couple.id })
-      .eq('id', user.id);
-
-    await refreshProfile();
-    setLoading(false);
   };
 
   // ─── Copy invite code ─────────────────────────
