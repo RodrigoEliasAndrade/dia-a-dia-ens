@@ -30,7 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch profile from Supabase
+  // Fetch profile from Supabase — auto-creates if missing (self-healing)
   const fetchProfile = async (userId: string) => {
     console.log('[fetchProfile] Fetching for userId:', userId);
     const { data, error, status } = await supabase
@@ -39,7 +39,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .eq('id', userId)
       .single();
     console.log('[fetchProfile] Result — status:', status, 'data:', data, 'error:', error);
-    setProfile(data);
+
+    if (data) {
+      setProfile(data);
+      return;
+    }
+
+    // Profile doesn't exist — auto-create it (handle_new_user trigger may have failed)
+    console.log('[fetchProfile] Profile missing! Auto-creating...');
+    const { error: insertError } = await supabase
+      .from('profiles')
+      .insert({ id: userId, display_name: null });
+
+    if (insertError) {
+      console.error('[fetchProfile] Auto-create failed:', insertError.message);
+      // Maybe RLS blocks insert, or it already exists — try fetching again
+      const { data: retryData } = await supabase
+        .from('profiles')
+        .select('id, display_name, couple_id, spouse_email')
+        .eq('id', userId)
+        .single();
+      setProfile(retryData);
+      return;
+    }
+
+    console.log('[fetchProfile] Auto-created profile. Fetching again...');
+    const { data: newData } = await supabase
+      .from('profiles')
+      .select('id, display_name, couple_id, spouse_email')
+      .eq('id', userId)
+      .single();
+    setProfile(newData);
   };
 
   const refreshProfile = async () => {
