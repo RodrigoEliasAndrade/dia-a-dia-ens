@@ -3,7 +3,10 @@ import { Heart, CheckCircle, LogOut, Edit3, Clock } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 
-const APP_VERSION = 'v4-debug'; // change to confirm deploy
+const APP_VERSION = 'v5-fetch'; // change to confirm deploy
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 export default function CoupleSetup() {
   const { user, profile, signOut, setSpouseEmail, refreshProfile } = useAuth();
@@ -57,48 +60,86 @@ export default function CoupleSetup() {
 
   const addLog = (msg: string) => setDebugLog(prev => [...prev, `${new Date().toLocaleTimeString()} ${msg}`]);
 
+  // Raw fetch with 8s timeout — bypasses Supabase JS client entirely
+  const fetchWithTimeout = async (url: string, opts: RequestInit, timeoutMs = 8000) => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, { ...opts, signal: controller.signal });
+      clearTimeout(timer);
+      return res;
+    } catch (e) {
+      clearTimeout(timer);
+      throw e;
+    }
+  };
+
+  const getAuthToken = async () => {
+    const { data } = await supabase.auth.getSession();
+    return data?.session?.access_token || null;
+  };
+
   const handleRepairProfile = async () => {
     setRepairing(true);
-    addLog('REPAIR: Iniciando...');
+    addLog('REPAIR: Iniciando (raw fetch)...');
 
     try {
-      // Step 1: Try to read profile
-      addLog('REPAIR: Lendo profile...');
-      const { data: existing, error: readErr } = await supabase
-        .from('profiles')
-        .select('id, display_name, couple_id, spouse_email')
-        .eq('id', user.id)
-        .single();
+      // Get auth token
+      addLog('REPAIR: Obtendo token...');
+      const token = await getAuthToken();
+      if (!token) {
+        addLog('REPAIR: SEM TOKEN! Sessão expirada. Faça logout e login novamente.');
+        setRepairing(false);
+        return;
+      }
+      addLog('REPAIR: Token OK (' + token.slice(0, 20) + '...)');
 
-      addLog(`REPAIR: Read result — data: ${JSON.stringify(existing)}, error: ${readErr?.message || 'none'}`);
+      const headers = {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation',
+      };
 
-      if (existing) {
-        addLog('REPAIR: Profile existe! Atualizando state...');
+      // Step 1: Read profile via raw fetch
+      addLog('REPAIR: GET profile...');
+      const readRes = await fetchWithTimeout(
+        `${SUPABASE_URL}/rest/v1/profiles?id=eq.${user.id}&select=id,display_name,couple_id,spouse_email`,
+        { method: 'GET', headers }
+      );
+      const readBody = await readRes.json();
+      addLog(`REPAIR: GET ${readRes.status} — ${JSON.stringify(readBody)}`);
+
+      if (Array.isArray(readBody) && readBody.length > 0) {
+        addLog('REPAIR: Profile já existe! Atualizando state...');
         await refreshProfile();
         addLog('REPAIR: Done!');
         setRepairing(false);
         return;
       }
 
-      // Step 2: Profile doesn't exist — create it
-      addLog('REPAIR: Profile não existe. Criando...');
-      const { data: inserted, error: insertErr } = await supabase
-        .from('profiles')
-        .insert({ id: user.id, display_name: null })
-        .select()
-        .single();
+      // Step 2: Create profile via raw fetch
+      addLog('REPAIR: POST (criando profile)...');
+      const insertRes = await fetchWithTimeout(
+        `${SUPABASE_URL}/rest/v1/profiles`,
+        { method: 'POST', headers, body: JSON.stringify({ id: user.id, display_name: null }) }
+      );
+      const insertBody = await insertRes.text();
+      addLog(`REPAIR: POST ${insertRes.status} — ${insertBody}`);
 
-      addLog(`REPAIR: Insert result — data: ${JSON.stringify(inserted)}, error: ${insertErr?.message || 'none'}`);
-
-      if (insertErr) {
-        addLog(`REPAIR: FALHOU — ${insertErr.message}`);
-      } else {
+      if (insertRes.ok) {
         addLog('REPAIR: Profile criado! Recarregando...');
         await refreshProfile();
-        addLog('REPAIR: Done!');
+        addLog('REPAIR: SUCESSO!');
+      } else {
+        addLog(`REPAIR: FALHOU (${insertRes.status})`);
       }
     } catch (e) {
-      addLog(`REPAIR: EXCEPTION — ${String(e)}`);
+      if (e instanceof DOMException && e.name === 'AbortError') {
+        addLog('REPAIR: TIMEOUT (8s) — Supabase não respondeu');
+      } else {
+        addLog(`REPAIR: EXCEPTION — ${String(e)}`);
+      }
     }
     setRepairing(false);
   };
