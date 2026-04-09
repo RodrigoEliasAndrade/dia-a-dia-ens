@@ -1,22 +1,14 @@
 import { useState } from 'react';
 import { Heart, CheckCircle, LogOut, Edit3, Clock } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase } from '../../lib/supabase';
-
-const APP_VERSION = 'v5-fetch'; // change to confirm deploy
-
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 export default function CoupleSetup() {
-  const { user, profile, signOut, setSpouseEmail, refreshProfile } = useAuth();
+  const { user, profile, signOut, setSpouseEmail } = useAuth();
   const [email, setEmail] = useState('');
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [debugLog, setDebugLog] = useState<string[]>([]);
-  const [repairing, setRepairing] = useState(false);
 
   if (!user) return null;
 
@@ -33,145 +25,25 @@ export default function CoupleSetup() {
       return;
     }
 
-    addLog('1. Início — email: ' + email.trim());
     setLoading(true);
     setError('');
     setSuccess('');
 
     try {
-      addLog('2. Chamando setSpouseEmail...');
       const { error: err } = await setSpouseEmail(email.trim());
-      addLog('3. Retornou — erro: ' + (err || 'nenhum'));
       if (err) {
         setError(err);
       } else {
-        setSuccess('E-mail salvo!');
+        setSuccess('E-mail salvo! Aguardando cônjuge criar a conta.');
         setEditing(false);
         setEmail('');
       }
-    } catch (e) {
-      addLog('EXCEPTION: ' + String(e));
+    } catch {
       setError('Erro de conexão. Tente novamente.');
     } finally {
-      addLog('4. Fim — loading=false');
       setLoading(false);
     }
   };
-
-  const addLog = (msg: string) => setDebugLog(prev => [...prev, `${new Date().toLocaleTimeString()} ${msg}`]);
-
-  // Raw fetch with 8s timeout — bypasses Supabase JS client entirely
-  const fetchWithTimeout = async (url: string, opts: RequestInit, timeoutMs = 8000) => {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-    try {
-      const res = await fetch(url, { ...opts, signal: controller.signal });
-      clearTimeout(timer);
-      return res;
-    } catch (e) {
-      clearTimeout(timer);
-      throw e;
-    }
-  };
-
-  const getAuthToken = async () => {
-    const { data } = await supabase.auth.getSession();
-    return data?.session?.access_token || null;
-  };
-
-  const handleRepairProfile = async () => {
-    setRepairing(true);
-    addLog('REPAIR: Iniciando (raw fetch)...');
-
-    try {
-      // Get auth token
-      addLog('REPAIR: Obtendo token...');
-      const token = await getAuthToken();
-      if (!token) {
-        addLog('REPAIR: SEM TOKEN! Sessão expirada. Faça logout e login novamente.');
-        setRepairing(false);
-        return;
-      }
-      addLog('REPAIR: Token OK (' + token.slice(0, 20) + '...)');
-
-      const headers = {
-        'apikey': SUPABASE_KEY,
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'Prefer': 'return=representation',
-      };
-
-      // Step 1: Read profile via raw fetch
-      addLog('REPAIR: GET profile...');
-      const readRes = await fetchWithTimeout(
-        `${SUPABASE_URL}/rest/v1/profiles?id=eq.${user.id}&select=id,display_name,couple_id,spouse_email`,
-        { method: 'GET', headers }
-      );
-      const readBody = await readRes.json();
-      addLog(`REPAIR: GET ${readRes.status} — ${JSON.stringify(readBody)}`);
-
-      if (Array.isArray(readBody) && readBody.length > 0) {
-        addLog('REPAIR: Profile já existe! Atualizando state...');
-        await refreshProfile();
-        addLog('REPAIR: Done!');
-        setRepairing(false);
-        return;
-      }
-
-      // Step 2: Create profile via raw fetch
-      addLog('REPAIR: POST (criando profile)...');
-      const insertRes = await fetchWithTimeout(
-        `${SUPABASE_URL}/rest/v1/profiles`,
-        { method: 'POST', headers, body: JSON.stringify({ id: user.id, display_name: null }) }
-      );
-      const insertBody = await insertRes.text();
-      addLog(`REPAIR: POST ${insertRes.status} — ${insertBody}`);
-
-      if (insertRes.ok) {
-        addLog('REPAIR: Profile criado! Recarregando...');
-        await refreshProfile();
-        addLog('REPAIR: SUCESSO!');
-      } else {
-        addLog(`REPAIR: FALHOU (${insertRes.status})`);
-      }
-    } catch (e) {
-      if (e instanceof DOMException && e.name === 'AbortError') {
-        addLog('REPAIR: TIMEOUT (8s) — Supabase não respondeu');
-      } else {
-        addLog(`REPAIR: EXCEPTION — ${String(e)}`);
-      }
-    }
-    setRepairing(false);
-  };
-
-  // Debug info component (reusable)
-  const DebugPanel = () => (
-    <div className="mt-4 bg-gray-900 text-green-400 text-xs font-mono p-3 rounded-xl max-h-80 overflow-auto">
-      <div className="text-yellow-400 mb-2">--- DIAGNÓSTICO ({APP_VERSION}) ---</div>
-      <div>user.id: {user.id?.slice(0, 8)}...</div>
-      <div>user.email: {user.email}</div>
-      <div>profile: {profile ? 'EXISTS' : 'NULL'}</div>
-      <div>profile.couple_id: {profile?.couple_id || 'null'}</div>
-      <div>profile.spouse_email: {profile?.spouse_email || 'null'}</div>
-
-      {!profile && (
-        <button
-          onClick={handleRepairProfile}
-          disabled={repairing}
-          className="mt-2 px-3 py-1.5 bg-red-600 text-white text-xs font-bold rounded-lg disabled:opacity-50"
-        >
-          {repairing ? 'Reparando...' : 'REPARAR PERFIL'}
-        </button>
-      )}
-
-      {debugLog.length > 0 && (
-        <>
-          <div className="text-yellow-400 mt-2">--- LOG ---</div>
-          {debugLog.map((l, i) => <div key={i}>{l}</div>)}
-        </>
-      )}
-    </div>
-  );
 
   // ─── Already paired ───────────────────────────
   if (profile?.couple_id) {
@@ -202,7 +74,6 @@ export default function CoupleSetup() {
           <LogOut className="w-4 h-4" />
           Sair da conta
         </button>
-        <DebugPanel />
       </div>
     );
   }
@@ -249,7 +120,6 @@ export default function CoupleSetup() {
           <LogOut className="w-4 h-4" />
           Sair da conta
         </button>
-        <DebugPanel />
       </div>
     );
   }
@@ -312,8 +182,6 @@ export default function CoupleSetup() {
         <LogOut className="w-4 h-4" />
         Sair da conta
       </button>
-
-      <DebugPanel />
     </div>
   );
 }
