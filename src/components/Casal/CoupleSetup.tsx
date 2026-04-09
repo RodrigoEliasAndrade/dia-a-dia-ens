@@ -53,6 +53,24 @@ export default function CoupleSetup() {
     }
   };
 
+  // Debug info component (reusable)
+  const DebugPanel = () => (
+    <div className="mt-4 bg-gray-900 text-green-400 text-xs font-mono p-3 rounded-xl max-h-60 overflow-auto">
+      <div className="text-yellow-400 mb-2">--- DIAGNÓSTICO ---</div>
+      <div>user.id: {user.id?.slice(0, 8)}...</div>
+      <div>user.email: {user.email}</div>
+      <div>profile: {profile ? 'EXISTS' : 'NULL'}</div>
+      <div>profile.couple_id: {profile?.couple_id || 'null'}</div>
+      <div>profile.spouse_email: {profile?.spouse_email || 'null'}</div>
+      {debugLog.length > 0 && (
+        <>
+          <div className="text-yellow-400 mt-2">--- LOG ---</div>
+          {debugLog.map((l, i) => <div key={i}>{l}</div>)}
+        </>
+      )}
+    </div>
+  );
+
   // ─── Already paired ───────────────────────────
   if (profile?.couple_id) {
     return (
@@ -82,6 +100,7 @@ export default function CoupleSetup() {
           <LogOut className="w-4 h-4" />
           Sair da conta
         </button>
+        <DebugPanel />
       </div>
     );
   }
@@ -128,6 +147,7 @@ export default function CoupleSetup() {
           <LogOut className="w-4 h-4" />
           Sair da conta
         </button>
+        <DebugPanel />
       </div>
     );
   }
@@ -191,12 +211,7 @@ export default function CoupleSetup() {
         Sair da conta
       </button>
 
-      {/* DEBUG — remover depois */}
-      {debugLog.length > 0 && (
-        <div className="mt-4 bg-gray-900 text-green-400 text-xs font-mono p-3 rounded-xl max-h-40 overflow-auto">
-          {debugLog.map((l, i) => <div key={i}>{l}</div>)}
-        </div>
-      )}
+      <DebugPanel />
     </div>
   );
 }
