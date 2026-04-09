@@ -24,13 +24,16 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-// Raw fetch helper with timeout — bypasses Supabase JS client issues
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+// Raw fetch with timeout — reliable alternative to Supabase JS client
 async function supabaseFetch(
   path: string,
   token: string,
   options: { method?: string; body?: object } = {}
 ) {
-  const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/${path}`;
+  const url = `${SUPABASE_URL}/rest/v1/${path}`;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 10000);
 
@@ -38,11 +41,11 @@ async function supabaseFetch(
     const res = await fetch(url, {
       method: options.method || 'GET',
       headers: {
-        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+        'apikey': SUPABASE_KEY,
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
-        'Prefer': options.method === 'POST' ? 'return=representation' :
-                  options.method === 'PATCH' ? 'return=representation' : '',
+        'Prefer': (options.method === 'POST' || options.method === 'PATCH')
+          ? 'return=representation' : '',
       },
       body: options.body ? JSON.stringify(options.body) : undefined,
       signal: controller.signal,
@@ -55,28 +58,50 @@ async function supabaseFetch(
   }
 }
 
+// Call Supabase RPC function via raw fetch
+async function supabaseRpc(fnName: string, token: string, params: object = {}) {
+  const url = `${SUPABASE_URL}/rest/v1/rpc/${fnName}`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10000);
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(params),
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    return { res, data: await res.json().catch(() => null), error: null };
+  } catch (e) {
+    clearTimeout(timer);
+    return { res: null, data: null, error: e instanceof DOMException ? 'timeout' : String(e) };
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Get current access token
   const getToken = async (): Promise<string | null> => {
     const { data } = await supabase.auth.getSession();
     return data?.session?.access_token ?? null;
   };
 
-  // Fetch profile using raw fetch — with auto-create if missing
+  // Fetch profile — auto-create if missing + auto-pair via RPC
   const fetchProfile = async (userId: string) => {
     const token = await getToken();
     if (!token) {
-      console.warn('[fetchProfile] No token — session expired');
       setProfile(null);
       return;
     }
 
-    // Read profile
     const { data, error } = await supabaseFetch(
       `profiles?id=eq.${userId}&select=id,display_name,couple_id,spouse_email`,
       token
@@ -88,20 +113,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // Check for auth errors (deleted user, expired token)
-    if (data?.code === 'PGRST301' || data?.code === '401' || data?.message?.includes('JWT')) {
-      console.warn('[fetchProfile] Invalid session — forcing logout');
+    // Dead session check
+    if (data?.code === 'PGRST301' || data?.message?.includes('JWT')) {
       await forceLogout();
       return;
     }
 
     if (Array.isArray(data) && data.length > 0) {
-      setProfile(data[0]);
+      const prof = data[0] as Profile;
+      setProfile(prof);
+
+      // If not paired, try auto-pair via RPC (non-blocking, fire-and-forget)
+      if (!prof.couple_id) {
+        supabaseRpc('check_and_pair', token).then(async ({ error: rpcErr }) => {
+          if (rpcErr) {
+            console.log('[autoPair] RPC not available or failed — OK, user can pair manually');
+            return;
+          }
+          // Re-fetch profile to pick up any couple_id changes
+          const { data: updated } = await supabaseFetch(
+            `profiles?id=eq.${userId}&select=id,display_name,couple_id,spouse_email`,
+            token
+          );
+          if (Array.isArray(updated) && updated.length > 0 && updated[0].couple_id) {
+            setProfile(updated[0] as Profile);
+          }
+        });
+      }
       return;
     }
 
     // Profile missing — auto-create
-    console.log('[fetchProfile] Profile missing, auto-creating...');
     const { data: insertData, error: insertError } = await supabaseFetch(
       'profiles',
       token,
@@ -109,7 +151,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 
     if (insertError) {
-      console.error('[fetchProfile] Auto-create failed:', insertError);
       setProfile(null);
       return;
     }
@@ -117,7 +158,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (Array.isArray(insertData) && insertData.length > 0) {
       setProfile(insertData[0]);
     } else {
-      // Insert succeeded but no return data — re-fetch
       const { data: retryData } = await supabaseFetch(
         `profiles?id=eq.${userId}&select=id,display_name,couple_id,spouse_email`,
         token
@@ -132,17 +172,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (user) await fetchProfile(user.id);
   };
 
-  // Force logout — clears everything when session is invalid
   const forceLogout = async () => {
     try { await supabase.auth.signOut(); } catch { /* ignore */ }
     setUser(null);
     setSession(null);
     setProfile(null);
-    // Clear onboarding flag so user sees fresh start
     localStorage.removeItem('ens-onboarding-done');
   };
 
-  // Listen for auth changes
   useEffect(() => {
     const timeout = setTimeout(() => setLoading(false), 3000);
 
@@ -150,7 +187,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearTimeout(timeout);
 
       if (session?.user) {
-        // Validate session is still alive by making a quick check
         const token = session.access_token;
         const { data, error } = await supabaseFetch(
           `profiles?id=eq.${session.user.id}&select=id&limit=1`,
@@ -158,8 +194,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         );
 
         if (error === 'timeout') {
-          // Network issue — keep session, try later
-          console.warn('[init] Supabase timeout — keeping session');
           setSession(session);
           setUser(session.user);
           setLoading(false);
@@ -167,14 +201,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         if (data?.code === 'PGRST301' || data?.message?.includes('JWT')) {
-          // Dead session — force logout
-          console.warn('[init] Dead session detected — forcing logout');
           await forceLogout();
           setLoading(false);
           return;
         }
 
-        // Session is valid
         setSession(session);
         setUser(session.user);
         await fetchProfile(session.user.id);
@@ -198,7 +229,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    // Realtime: auto-detect pairing
     let realtimeChannel: ReturnType<typeof supabase.channel> | null = null;
     supabase.auth.getSession().then(({ data: { session: s } }) => {
       if (s?.user) {
@@ -251,7 +281,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await fetchProfile(user.id);
   };
 
-  // Set spouse email — triggers auto-pairing via DB trigger
   const setSpouseEmail = async (email: string): Promise<{ error: string | null }> => {
     if (!user) return { error: 'Não autenticado' };
 
@@ -267,7 +296,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) return { error: error === 'timeout' ? 'Servidor não respondeu. Tente novamente.' : error };
     if (!res?.ok) return { error: data?.message || `Erro ${res?.status}` };
 
-    // Refresh profile — couple_id may have been set by the trigger
     await fetchProfile(user.id);
     return { error: null };
   };
