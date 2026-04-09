@@ -9,6 +9,7 @@ export default function CoupleSetup() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [debugLog, setDebugLog] = useState<string[]>([]);
 
   if (!user) return null;
 
@@ -25,15 +26,17 @@ export default function CoupleSetup() {
       return;
     }
 
-    console.log('[CoupleSetup] handleSetSpouse called with:', email.trim());
+    const log = (msg: string) => setDebugLog(prev => [...prev, `${new Date().toLocaleTimeString()} ${msg}`]);
+
+    log('1. Início — email: ' + email.trim());
     setLoading(true);
     setError('');
     setSuccess('');
 
     try {
-      console.log('[CoupleSetup] Calling setSpouseEmail...');
+      log('2. Chamando setSpouseEmail...');
       const { error: err } = await setSpouseEmail(email.trim());
-      console.log('[CoupleSetup] setSpouseEmail returned, error:', err);
+      log('3. Retornou — erro: ' + (err || 'nenhum'));
       if (err) {
         setError(err);
       } else {
@@ -42,10 +45,10 @@ export default function CoupleSetup() {
         setEmail('');
       }
     } catch (e) {
-      console.error('[CoupleSetup] Exception:', e);
+      log('EXCEPTION: ' + String(e));
       setError('Erro de conexão. Tente novamente.');
     } finally {
-      console.log('[CoupleSetup] finally — setting loading=false');
+      log('4. Fim — loading=false');
       setLoading(false);
     }
   };
@@ -187,6 +190,13 @@ export default function CoupleSetup() {
         <LogOut className="w-4 h-4" />
         Sair da conta
       </button>
+
+      {/* DEBUG — remover depois */}
+      {debugLog.length > 0 && (
+        <div className="mt-4 bg-gray-900 text-green-400 text-xs font-mono p-3 rounded-xl max-h-40 overflow-auto">
+          {debugLog.map((l, i) => <div key={i}>{l}</div>)}
+        </div>
+      )}
     </div>
   );
 }
