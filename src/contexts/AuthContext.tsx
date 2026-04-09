@@ -32,11 +32,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Fetch profile from Supabase
   const fetchProfile = async (userId: string) => {
-    const { data } = await supabase
+    console.log('[fetchProfile] Fetching for userId:', userId);
+    const { data, error, status } = await supabase
       .from('profiles')
       .select('id, display_name, couple_id, spouse_email')
       .eq('id', userId)
       .single();
+    console.log('[fetchProfile] Result — status:', status, 'data:', data, 'error:', error);
     setProfile(data);
   };
 
@@ -133,16 +135,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const setSpouseEmail = async (email: string): Promise<{ error: string | null }> => {
     if (!user) return { error: 'Não autenticado' };
 
-    const { error } = await supabase
-      .from('profiles')
-      .update({ spouse_email: email.trim().toLowerCase() })
-      .eq('id', user.id);
+    console.log('[setSpouseEmail] Updating spouse_email to:', email.trim().toLowerCase());
 
-    if (error) return { error: error.message };
+    try {
+      const { error, status } = await supabase
+        .from('profiles')
+        .update({ spouse_email: email.trim().toLowerCase() })
+        .eq('id', user.id);
 
-    // Refresh profile — couple_id may have been set by the trigger
-    await fetchProfile(user.id);
-    return { error: null };
+      console.log('[setSpouseEmail] Update response — status:', status, 'error:', error);
+
+      if (error) return { error: error.message };
+
+      // Refresh profile — couple_id may have been set by the trigger
+      console.log('[setSpouseEmail] Refreshing profile...');
+      await fetchProfile(user.id);
+      console.log('[setSpouseEmail] Profile refreshed. Done.');
+      return { error: null };
+    } catch (err) {
+      console.error('[setSpouseEmail] Exception:', err);
+      return { error: 'Erro de conexão com o servidor.' };
+    }
   };
 
   return (

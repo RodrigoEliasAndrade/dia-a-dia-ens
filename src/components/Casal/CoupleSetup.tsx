@@ -25,12 +25,15 @@ export default function CoupleSetup() {
       return;
     }
 
+    console.log('[CoupleSetup] handleSetSpouse called with:', email.trim());
     setLoading(true);
     setError('');
     setSuccess('');
 
     try {
+      console.log('[CoupleSetup] Calling setSpouseEmail...');
       const { error: err } = await setSpouseEmail(email.trim());
+      console.log('[CoupleSetup] setSpouseEmail returned, error:', err);
       if (err) {
         setError(err);
       } else {
@@ -38,9 +41,11 @@ export default function CoupleSetup() {
         setEditing(false);
         setEmail('');
       }
-    } catch {
+    } catch (e) {
+      console.error('[CoupleSetup] Exception:', e);
       setError('Erro de conexão. Tente novamente.');
     } finally {
+      console.log('[CoupleSetup] finally — setting loading=false');
       setLoading(false);
     }
   };
