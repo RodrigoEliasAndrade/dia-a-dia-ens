@@ -4,10 +4,18 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Supabase credentials not found. Running in offline mode.');
+  const msg =
+    'ENS Dia a Dia: Supabase credentials missing. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env (dev) or repo Secrets (CI).';
+  if (import.meta.env.PROD) {
+    throw new Error(msg);
+  }
+  console.error(msg);
 }
 
+export const SUPABASE_URL = supabaseUrl ?? '';
+export const SUPABASE_ANON_KEY = supabaseAnonKey ?? '';
+
 export const supabase = createClient(
-  supabaseUrl || 'https://placeholder.supabase.co',
-  supabaseAnonKey || 'placeholder',
+  SUPABASE_URL || 'https://placeholder.supabase.co',
+  SUPABASE_ANON_KEY || 'placeholder',
 );

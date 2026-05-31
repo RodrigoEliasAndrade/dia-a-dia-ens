@@ -1,6 +1,6 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
-import { useLocalStorage } from './useLocalStorage';
+import { useSyncedStorage } from './useSyncedStorage';
 import { calculateStreak } from '../utils/streakCalculator';
 import type { OracaoConjugalData, PrayerCompletion, OracaoPessoalData } from '../types';
 
@@ -20,28 +20,38 @@ const defaultPessoalData: OracaoPessoalData = {
   monthlyCount: 0,
   currentStreak: 0,
   completions: [],
+  lastMonthReset: format(new Date(), 'yyyy-MM'),
 };
 
 export function usePrayerTracking() {
-  const [conjugalData, setConjugalData] = useLocalStorage<OracaoConjugalData>(
+  const [conjugalData, setConjugalData] = useSyncedStorage<OracaoConjugalData>(
     'ens-oracao-conjugal',
     defaultConjugalData
   );
 
-  const [pessoalData, setPessoalData] = useLocalStorage<OracaoPessoalData>(
+  const [pessoalData, setPessoalData] = useSyncedStorage<OracaoPessoalData>(
     'ens-oracao-pessoal',
     defaultPessoalData
   );
 
-  // Auto-reset monthly counts
-  const currentMonth = format(new Date(), 'yyyy-MM');
-  if (conjugalData.lastMonthReset !== currentMonth) {
-    setConjugalData(prev => ({
-      ...prev,
-      monthlyCount: 0,
-      lastMonthReset: currentMonth,
-    }));
-  }
+  // Auto-reset monthly counts — runs once per month transition, inside an effect
+  useEffect(() => {
+    const currentMonth = format(new Date(), 'yyyy-MM');
+    if (conjugalData.lastMonthReset !== currentMonth) {
+      setConjugalData(prev => ({
+        ...prev,
+        monthlyCount: 0,
+        lastMonthReset: currentMonth,
+      }));
+    }
+    if (pessoalData.lastMonthReset !== currentMonth) {
+      setPessoalData(prev => ({
+        ...prev,
+        monthlyCount: 0,
+        lastMonthReset: currentMonth,
+      }));
+    }
+  }, [conjugalData.lastMonthReset, pessoalData.lastMonthReset, setConjugalData, setPessoalData]);
 
   const completeConjugalPrayer = useCallback(
     (completion: Omit<PrayerCompletion, 'date'>) => {
@@ -86,20 +96,21 @@ export function usePrayerTracking() {
     });
   }, [setPessoalData]);
 
-  const isCompletedToday = (type: 'conjugal' | 'pessoal') => {
+  const isCompletedToday = useCallback((type: 'conjugal' | 'pessoal') => {
     const today = format(new Date(), 'yyyy-MM-dd');
     if (type === 'conjugal') {
       return conjugalData.completions.some(c => c.date === today);
     }
     return pessoalData.completions.includes(today);
-  };
+  }, [conjugalData.completions, pessoalData.completions]);
 
-  const getCompletedDates = () => {
+  const completedDates = useMemo(() => {
     const conjugalDates = conjugalData.completions.map(c => c.date);
     const pessoalDates = pessoalData.completions;
-    // Merge and deduplicate
     return [...new Set([...conjugalDates, ...pessoalDates])];
-  };
+  }, [conjugalData.completions, pessoalData.completions]);
+
+  const getCompletedDates = useCallback(() => completedDates, [completedDates]);
 
   return {
     conjugalData,

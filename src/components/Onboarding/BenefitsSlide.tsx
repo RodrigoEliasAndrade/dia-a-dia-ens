@@ -47,7 +47,7 @@ export default function BenefitsSlide({ onNext }: SlideProps) {
         </div>
         <div>
           <div className="text-2xl mb-1">🔗</div>
-          <p className="text-xs text-ens-text-light">Sincronize<br />com seu cônjuge</p>
+          <p className="text-xs text-ens-text-light">Sincronize<br />entre dispositivos</p>
         </div>
         <div>
           <div className="text-2xl mb-1">📖</div>

@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/supabase';
 import type { User, Session } from '@supabase/supabase-js';
 
 interface Profile {
@@ -20,12 +20,10 @@ interface AuthContextType {
   updateProfile: (updates: Partial<Profile>) => Promise<void>;
   refreshProfile: () => Promise<void>;
   setSpouseEmail: (email: string) => Promise<{ error: string | null }>;
+  sendPasswordReset: (email: string) => Promise<{ error: Error | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
-
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 // Raw fetch with timeout — reliable alternative to Supabase JS client
 async function supabaseFetch(
@@ -41,7 +39,7 @@ async function supabaseFetch(
     const res = await fetch(url, {
       method: options.method || 'GET',
       headers: {
-        'apikey': SUPABASE_KEY,
+        'apikey': SUPABASE_ANON_KEY,
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
         'Prefer': (options.method === 'POST' || options.method === 'PATCH')
@@ -68,7 +66,7 @@ async function supabaseRpc(fnName: string, token: string, params: object = {}) {
     const res = await fetch(url, {
       method: 'POST',
       headers: {
-        'apikey': SUPABASE_KEY,
+        'apikey': SUPABASE_ANON_KEY,
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
@@ -281,6 +279,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await fetchProfile(user.id);
   };
 
+  const sendPasswordReset = async (email: string): Promise<{ error: Error | null }> => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+      redirectTo: `${window.location.origin}/dia-a-dia-ens/`,
+    });
+    return { error: error as Error | null };
+  };
+
   const setSpouseEmail = async (email: string): Promise<{ error: string | null }> => {
     if (!user) return { error: 'Não autenticado' };
 
@@ -304,6 +309,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider value={{
       user, session, profile, loading,
       signUp, signIn, signOut, updateProfile, refreshProfile, setSpouseEmail,
+      sendPasswordReset,
     }}>
       {children}
     </AuthContext.Provider>

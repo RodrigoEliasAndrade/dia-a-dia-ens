@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
 import { useLocalStorage } from '../../hooks/useLocalStorage';
+import { useSyncedStorage } from '../../hooks/useSyncedStorage';
 import { format, parseISO, differenceInDays, isToday, isFuture } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { RetiroAnualData, RetiroAnualEntry } from '../../types';
@@ -104,7 +105,7 @@ type Mode = 'schedule' | 'journal' | 'review';
 
 export default function RetiroAnualFlow() {
   const navigate = useNavigate();
-  const [rawData, setData] = useLocalStorage<RetiroAnualData>('ens-retiro-anual', defaultData);
+  const [rawData, setData] = useSyncedStorage<RetiroAnualData>('ens-retiro-anual', defaultData);
   const data = migrateData(rawData as RetiroAnualData & { yearCompleted?: boolean; lastCompleted?: string });
   if (data !== rawData) setData(data);
 

@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { useLocalStorage } from './useLocalStorage';
+import { useSyncedStorage } from './useSyncedStorage';
 
 export interface DiarioEntry {
   id: string;
@@ -13,31 +13,36 @@ export interface DiarioEntry {
 }
 
 export function useDiario() {
-  const [entries, setEntries] = useLocalStorage<DiarioEntry[]>('ens-diario-pessoal', []);
+  const [entries, setEntries] = useSyncedStorage<DiarioEntry[]>('ens-diario-pessoal', []);
 
   const addEntry = useCallback((entry: Omit<DiarioEntry, 'id'>) => {
     const id = `${entry.date}-${Date.now()}`;
     setEntries(prev => [...prev, { ...entry, id }]);
   }, [setEntries]);
 
-  // Get all entries sorted newest first
+  const updateEntry = useCallback((id: string, patch: Partial<Omit<DiarioEntry, 'id'>>) => {
+    setEntries(prev => prev.map(e => (e.id === id ? { ...e, ...patch } : e)));
+  }, [setEntries]);
+
+  const deleteEntry = useCallback((id: string) => {
+    setEntries(prev => prev.filter(e => e.id !== id));
+  }, [setEntries]);
+
   const getEntries = useCallback(() => {
     return [...entries].sort((a, b) => b.date.localeCompare(a.date));
   }, [entries]);
 
-  // Group entries by month (YYYY-MM)
   const getEntriesByMonth = useCallback(() => {
     const sorted = getEntries();
     const grouped: Record<string, DiarioEntry[]> = {};
     for (const entry of sorted) {
-      const month = entry.date.slice(0, 7); // YYYY-MM
+      const month = entry.date.slice(0, 7);
       if (!grouped[month]) grouped[month] = [];
       grouped[month].push(entry);
     }
     return grouped;
   }, [getEntries]);
 
-  // Search entries by text
   const searchEntries = useCallback((query: string) => {
     const lower = query.toLowerCase();
     return getEntries().filter(
@@ -51,6 +56,8 @@ export function useDiario() {
   return {
     entries,
     addEntry,
+    updateEntry,
+    deleteEntry,
     getEntries,
     getEntriesByMonth,
     searchEntries,

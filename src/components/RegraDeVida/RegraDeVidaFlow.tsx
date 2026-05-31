@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, Archive, Check } from 'lucide-react';
-import { useLocalStorage } from '../../hooks/useLocalStorage';
+import { useSyncedStorage } from '../../hooks/useSyncedStorage';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { RegraDeVidaData, RegraDeVidaCommitment } from '../../types';
@@ -131,7 +131,7 @@ const defaultData: RegraDeVidaData = {
 
 export default function RegraDeVidaFlow() {
   const navigate = useNavigate();
-  const [data, setData] = useLocalStorage<RegraDeVidaData>('ens-regra-vida', defaultData);
+  const [data, setData] = useSyncedStorage<RegraDeVidaData>('ens-regra-vida', defaultData);
   const [showSetup, setShowSetup] = useState(false);
   const [setupStep, setSetupStep] = useState(0); // 0=area, 1=commitment, 2=prayer
   const [selectedArea, setSelectedArea] = useState('');

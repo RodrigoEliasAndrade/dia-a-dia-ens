@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Mic, MicOff, Save } from 'lucide-react';
-import { useLocalStorage } from '../../hooks/useLocalStorage';
+import { useSyncedStorage } from '../../hooks/useSyncedStorage';
 import { useSpeechRecognition } from '../../hooks/useSpeechRecognition';
 import { useTimer } from '../../hooks/useTimer';
 import { useFocusMode } from '../../hooks/useFocusMode';
@@ -215,7 +215,7 @@ const defaultData: DeverSentarData = {
 
 export default function DeverSentarFlow() {
   const navigate = useNavigate();
-  const [data, setData] = useLocalStorage<DeverSentarData>('ens-dever-sentar', defaultData);
+  const [data, setData] = useSyncedStorage<DeverSentarData>('ens-dever-sentar', defaultData);
   const { isSupported: micSupported, isListening, interimText, startListening, stopListening } = useSpeechRecognition();
 
   // Core flow state

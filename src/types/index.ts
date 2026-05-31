@@ -44,6 +44,7 @@ export interface OracaoPessoalData {
   monthlyCount: number;
   currentStreak: number;
   completions: string[]; // ISO dates
+  lastMonthReset: string; // YYYY-MM to track month resets
 }
 
 export interface RegraDeVidaCommitment {
