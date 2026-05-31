@@ -335,6 +335,20 @@ export default function DeverSentarFlow() {
     (nextDever.getTime() - new Date(new Date().toDateString()).getTime()) / 86400000
   );
 
+  // Calendar grid for the picker — aligned to real weekdays of the
+  // upcoming Dever's month, so columns map to Dom..Sáb correctly.
+  const calendarMonth = new Date(nextDever.getFullYear(), nextDever.getMonth(), 1);
+  const calendarCells: (number | null)[] = (() => {
+    const year = calendarMonth.getFullYear();
+    const month = calendarMonth.getMonth();
+    const firstWeekday = new Date(year, month, 1).getDay(); // 0 = Sunday
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const cells: (number | null)[] = [];
+    for (let i = 0; i < firstWeekday; i++) cells.push(null);
+    for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+    return cells;
+  })();
+
   // ═══════════════════════════════════════════════════
   // LEVEL SELECTION SCREEN
   // ═══════════════════════════════════════════════════
@@ -398,25 +412,50 @@ export default function DeverSentarFlow() {
             {editingSchedule && (
               <div className="mt-3">
                 <p className="text-xs text-ens-text-light mb-2">
-                  Escolham o dia do mês em que costumam sentar juntos:
+                  Escolham o dia em que costumam sentar juntos. O Dever se repete
+                  todo mês neste dia.
                 </p>
-                <div className="grid grid-cols-7 gap-1.5">
-                  {Array.from({ length: 28 }, (_, i) => i + 1).map(day => (
-                    <button
-                      key={day}
-                      onClick={() => { setScheduledDay(day); setEditingSchedule(false); }}
-                      className={`aspect-square rounded-lg text-xs font-medium transition-all ${
-                        day === scheduledDay
-                          ? 'bg-ens-blue text-white'
-                          : 'bg-gray-100 text-ens-text hover:bg-ens-blue/10'
-                      }`}
+
+                {/* Reference month label */}
+                <p className="text-center text-sm font-semibold text-ens-blue capitalize mb-2">
+                  {format(calendarMonth, 'MMMM yyyy', { locale: ptBR })}
+                </p>
+
+                {/* Weekday headers */}
+                <div className="grid grid-cols-7 gap-1.5 mb-1">
+                  {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((w, i) => (
+                    <div
+                      key={i}
+                      className="text-center text-[0.625rem] font-semibold text-ens-text-light"
                     >
-                      {day}
-                    </button>
+                      {w}
+                    </div>
                   ))}
                 </div>
+
+                {/* Day grid aligned to real weekdays */}
+                <div className="grid grid-cols-7 gap-1.5">
+                  {calendarCells.map((day, idx) =>
+                    day === null ? (
+                      <div key={`blank-${idx}`} />
+                    ) : (
+                      <button
+                        key={day}
+                        onClick={() => { setScheduledDay(day); setEditingSchedule(false); }}
+                        className={`aspect-square rounded-lg text-xs font-medium transition-all ${
+                          day === scheduledDay
+                            ? 'bg-ens-blue text-white'
+                            : 'bg-gray-100 text-ens-text hover:bg-ens-blue/10'
+                        }`}
+                      >
+                        {day}
+                      </button>
+                    )
+                  )}
+                </div>
+
                 <p className="text-[0.625rem] text-ens-text-light mt-2 text-center">
-                  Dica: escolham um dia que caiba na rotina de vocês (ex: todo dia 15).
+                  O dia da semana muda a cada mês — o que fica fixo é o dia escolhido.
                 </p>
                 <button
                   onClick={() => setEditingSchedule(false)}
