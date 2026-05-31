@@ -4,6 +4,8 @@ import BottomNav from './components/shared/BottomNav';
 import ErrorBoundary from './components/shared/ErrorBoundary';
 import SyncIndicator from './components/shared/SyncIndicator';
 import InitialSyncOverlay from './components/shared/InitialSyncOverlay';
+import InstallPrompt from './components/shared/InstallPrompt';
+import UpdatePrompt from './components/shared/UpdatePrompt';
 import OnboardingFlow from './components/Onboarding/OnboardingFlow';
 import HomePage from './components/Home/HomePage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -52,6 +54,8 @@ function AppContent() {
     <BrowserRouter basename="/dia-a-dia-ens">
       <InitialSyncOverlay />
       <SyncIndicator />
+      <UpdatePrompt />
+      <InstallPrompt />
       <Suspense fallback={<RouteFallback />}>
         <Routes>
           <Route path="/" element={<HomePage />} />
