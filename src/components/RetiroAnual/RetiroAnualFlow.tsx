@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
-import { useLocalStorage } from '../../hooks/useLocalStorage';
 import { useSyncedStorage } from '../../hooks/useSyncedStorage';
 import { format, parseISO, differenceInDays, isToday, isFuture } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -105,13 +104,15 @@ type Mode = 'schedule' | 'journal' | 'review';
 
 export default function RetiroAnualFlow() {
   const navigate = useNavigate();
-  const [rawData, setData] = useSyncedStorage<RetiroAnualData>('ens-retiro-anual', defaultData);
+  // Retiro Anual is SHARED between spouses → couple scope
+  const [rawData, setData] = useSyncedStorage<RetiroAnualData>('ens-retiro-anual', defaultData, { scope: 'couple' });
   const data = migrateData(rawData as RetiroAnualData & { yearCompleted?: boolean; lastCompleted?: string });
   if (data !== rawData) setData(data);
 
   const [mode, setMode] = useState<Mode>('schedule');
   const [currentStep, setCurrentStep] = useState(0);
-  const [notes, setNotes] = useLocalStorage<Record<string, string>>('ens-retiro-anual-notes', {});
+  // In-progress retreat notes are also shared between spouses
+  const [notes, setNotes] = useSyncedStorage<Record<string, string>>('ens-retiro-anual-notes', {}, { scope: 'couple' });
   const [saved, setSaved] = useState(false);
   const [dateInput, setDateInput] = useState(data.scheduledDate || '');
   const [expandedHistory, setExpandedHistory] = useState<number | null>(null);

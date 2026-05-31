@@ -95,6 +95,10 @@ export function useSyncedStorage<T>(
   const scopeId = scope === 'couple' ? profile?.couple_id ?? null : user?.id ?? null;
   const table = scope === 'couple' ? 'couple_data' : 'user_data';
   const idColumn = scope === 'couple' ? 'couple_id' : 'user_id';
+  // Both tables have a unique key on (scope_id, data_key). user_data uses it
+  // as its PK; couple_data has a separate serial PK, so we MUST tell upsert to
+  // resolve conflicts on the composite key — otherwise it inserts duplicates.
+  const onConflict = `${idColumn},data_key`;
 
   // INITIAL PULL — fetch remote on mount/login. Single source of truth: this
   // effect MUST always pair its reportStart with a reportSuccess/reportError.
@@ -160,7 +164,7 @@ export function useSyncedStorage<T>(
       const local = readLocal(key, initialValueRef.current);
       if (JSON.stringify(local) !== JSON.stringify(initialValueRef.current)) {
         const upsertResult = await withTimeout(
-          supabase.from(table).upsert({ [idColumn]: scopeId, data_key: key, data: local }),
+          supabase.from(table).upsert({ [idColumn]: scopeId, data_key: key, data: local }, { onConflict }),
           REQUEST_TIMEOUT_MS,
         );
         if ('__timeout' in upsertResult) {
@@ -193,7 +197,7 @@ export function useSyncedStorage<T>(
         syncRef.current?.reportError(key);
       }
     };
-  }, [scopeId, table, idColumn, key]); // NOTE: sync intentionally NOT in deps
+  }, [scopeId, table, idColumn, key, onConflict]); // NOTE: sync intentionally NOT in deps
 
   // REALTIME subscription — independent of the pull above.
   useEffect(() => {
@@ -246,7 +250,7 @@ export function useSyncedStorage<T>(
 
         pushTimer.current = setTimeout(async () => {
           const result = await withTimeout(
-            supabase.from(table).upsert({ [idColumn]: scopeId, data_key: key, data: resolved }),
+            supabase.from(table).upsert({ [idColumn]: scopeId, data_key: key, data: resolved }, { onConflict }),
             REQUEST_TIMEOUT_MS,
           );
 
@@ -270,7 +274,7 @@ export function useSyncedStorage<T>(
         return resolved;
       });
     },
-    [key, scopeId, table, idColumn],
+    [key, scopeId, table, idColumn, onConflict],
   );
 
   return [value, setValue, { syncing, isInitialLoading, lastSyncedAt, error }];

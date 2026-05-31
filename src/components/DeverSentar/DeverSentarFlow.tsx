@@ -215,7 +215,7 @@ const defaultData: DeverSentarData = {
 
 export default function DeverSentarFlow() {
   const navigate = useNavigate();
-  const [data, setData] = useSyncedStorage<DeverSentarData>('ens-dever-sentar', defaultData);
+  const [data, setData] = useSyncedStorage<DeverSentarData>('ens-dever-sentar', defaultData, { scope: 'couple' });
   const { isSupported: micSupported, isListening, interimText, startListening, stopListening } = useSpeechRecognition();
 
   // Core flow state

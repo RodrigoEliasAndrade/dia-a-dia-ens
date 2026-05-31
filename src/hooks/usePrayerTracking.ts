@@ -24,11 +24,14 @@ const defaultPessoalData: OracaoPessoalData = {
 };
 
 export function usePrayerTracking() {
+  // Oração Conjugal is SHARED between spouses → couple scope
   const [conjugalData, setConjugalData] = useSyncedStorage<OracaoConjugalData>(
     'ens-oracao-conjugal',
-    defaultConjugalData
+    defaultConjugalData,
+    { scope: 'couple' }
   );
 
+  // Oração Pessoal is PRIVATE to each spouse → user scope (default)
   const [pessoalData, setPessoalData] = useSyncedStorage<OracaoPessoalData>(
     'ens-oracao-pessoal',
     defaultPessoalData
