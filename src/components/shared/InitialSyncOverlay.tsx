@@ -14,7 +14,7 @@ import { useSync } from '../../contexts/SyncContext';
  *     better to let the user in than block forever).
  */
 const FLAG_KEY = 'ens-first-sync-done';
-const MAX_WAIT_MS = 8000;
+const MAX_WAIT_MS = 5000;
 
 export default function InitialSyncOverlay() {
   const sync = useSync();
