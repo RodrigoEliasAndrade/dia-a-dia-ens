@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Mic, MicOff, Save } from 'lucide-react';
+import { ArrowLeft, Mic, MicOff, Save, CalendarClock } from 'lucide-react';
 import { useSyncedStorage } from '../../hooks/useSyncedStorage';
 import { useSpeechRecognition } from '../../hooks/useSpeechRecognition';
 import { useTimer } from '../../hooks/useTimer';
@@ -9,6 +9,7 @@ import TimerButton from '../shared/TimerButton';
 import FocusToggle from '../shared/FocusToggle';
 import FontSizeToggle from '../shared/FontSizeToggle';
 import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import type { DeverSentarData, DeverSentarLevelId } from '../../types';
 
 /**
@@ -228,6 +229,10 @@ export default function DeverSentarFlow() {
   // Level 2 specific
   const [selectedTheme, setSelectedTheme] = useState<string | null>(null);
 
+  // Scheduling — which day of the month the couple does the Dever de Sentar
+  const [editingSchedule, setEditingSchedule] = useState(false);
+  const scheduledDay = data.scheduledDay ?? 15;
+
   // Shared timer hook (sound + vibration on completion)
   const timer = useTimer();
   // Focus Mode — keeps screen awake + DND reminder
@@ -303,6 +308,33 @@ export default function DeverSentarFlow() {
   const currentMonth = format(new Date(), 'yyyy-MM');
   const doneThisMonth = data.completions.some(c => c.date.startsWith(currentMonth));
 
+  // ─── Scheduling helpers ─────────────────────────
+  const setScheduledDay = (day: number) => {
+    setData(prev => ({ ...prev, scheduledDay: day }));
+  };
+
+  // Compute the next occurrence of the scheduled day (this month if not past, else next month)
+  const computeNextDever = (day: number): Date => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    // Clamp the day to the number of days in the target month
+    const daysInThisMonth = new Date(year, month + 1, 0).getDate();
+    const clampedDay = Math.min(day, daysInThisMonth);
+    const candidate = new Date(year, month, clampedDay);
+    if (candidate >= new Date(year, month, now.getDate())) {
+      return candidate;
+    }
+    // Already passed this month → next month
+    const daysInNextMonth = new Date(year, month + 2, 0).getDate();
+    return new Date(year, month + 1, Math.min(day, daysInNextMonth));
+  };
+
+  const nextDever = computeNextDever(scheduledDay);
+  const daysUntilNext = Math.ceil(
+    (nextDever.getTime() - new Date(new Date().toDateString()).getTime()) / 86400000
+  );
+
   // ═══════════════════════════════════════════════════
   // LEVEL SELECTION SCREEN
   // ═══════════════════════════════════════════════════
@@ -333,6 +365,67 @@ export default function DeverSentarFlow() {
               Escolham o nível que faz sentido para vocês hoje.
               Num mês corrido, o check-in já é uma vitória.
             </p>
+          </div>
+
+          {/* Scheduling card */}
+          <div className="bg-white rounded-2xl shadow-md p-5 mb-5">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 bg-ens-gold/10 rounded-full flex items-center justify-center shrink-0">
+                <CalendarClock className="w-5 h-5 text-ens-gold" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-bold text-ens-blue text-sm">Dia do mês para o Dever</h3>
+                <p className="text-xs text-ens-text-light">
+                  {doneThisMonth
+                    ? 'Já feito este mês 🎉'
+                    : daysUntilNext === 0
+                    ? 'É hoje! 🔔'
+                    : daysUntilNext === 1
+                    ? 'Amanhã'
+                    : `Próximo: ${format(nextDever, "d 'de' MMMM", { locale: ptBR })} (em ${daysUntilNext} dias)`}
+                </p>
+              </div>
+              {!editingSchedule && (
+                <button
+                  onClick={() => setEditingSchedule(true)}
+                  className="text-xs font-semibold text-ens-blue bg-ens-blue/5 px-3 py-1.5 rounded-lg shrink-0"
+                >
+                  Dia {scheduledDay}
+                </button>
+              )}
+            </div>
+
+            {editingSchedule && (
+              <div className="mt-3">
+                <p className="text-xs text-ens-text-light mb-2">
+                  Escolham o dia do mês em que costumam sentar juntos:
+                </p>
+                <div className="grid grid-cols-7 gap-1.5">
+                  {Array.from({ length: 28 }, (_, i) => i + 1).map(day => (
+                    <button
+                      key={day}
+                      onClick={() => { setScheduledDay(day); setEditingSchedule(false); }}
+                      className={`aspect-square rounded-lg text-xs font-medium transition-all ${
+                        day === scheduledDay
+                          ? 'bg-ens-blue text-white'
+                          : 'bg-gray-100 text-ens-text hover:bg-ens-blue/10'
+                      }`}
+                    >
+                      {day}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[0.625rem] text-ens-text-light mt-2 text-center">
+                  Dica: escolham um dia que caiba na rotina de vocês (ex: todo dia 15).
+                </p>
+                <button
+                  onClick={() => setEditingSchedule(false)}
+                  className="w-full mt-2 py-2 text-xs text-ens-text-light"
+                >
+                  Fechar
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Level cards */}
