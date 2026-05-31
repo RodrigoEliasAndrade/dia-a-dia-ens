@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/supabase';
 import type { User, Session } from '@supabase/supabase-js';
 
@@ -87,87 +87,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Mutex to prevent concurrent fetchProfile calls causing race conditions.
+  const fetchingProfileRef = useRef(false);
+  // Tracks the last userId we successfully fetched for, so we know when to refetch.
+  const lastFetchedUserIdRef = useRef<string | null>(null);
+
   const getToken = async (): Promise<string | null> => {
     const { data } = await supabase.auth.getSession();
     return data?.session?.access_token ?? null;
-  };
-
-  // Fetch profile — auto-create if missing + auto-pair via RPC
-  const fetchProfile = async (userId: string) => {
-    const token = await getToken();
-    if (!token) {
-      setProfile(null);
-      return;
-    }
-
-    const { data, error } = await supabaseFetch(
-      `profiles?id=eq.${userId}&select=id,display_name,couple_id,spouse_email`,
-      token
-    );
-
-    if (error) {
-      console.error('[fetchProfile] Network error:', error);
-      setProfile(null);
-      return;
-    }
-
-    // Dead session check
-    if (data?.code === 'PGRST301' || data?.message?.includes('JWT')) {
-      await forceLogout();
-      return;
-    }
-
-    if (Array.isArray(data) && data.length > 0) {
-      const prof = data[0] as Profile;
-      setProfile(prof);
-
-      // If not paired, try auto-pair via RPC (non-blocking, fire-and-forget)
-      if (!prof.couple_id) {
-        supabaseRpc('check_and_pair', token).then(async ({ error: rpcErr }) => {
-          if (rpcErr) {
-            console.log('[autoPair] RPC not available or failed — OK, user can pair manually');
-            return;
-          }
-          // Re-fetch profile to pick up any couple_id changes
-          const { data: updated } = await supabaseFetch(
-            `profiles?id=eq.${userId}&select=id,display_name,couple_id,spouse_email`,
-            token
-          );
-          if (Array.isArray(updated) && updated.length > 0 && updated[0].couple_id) {
-            setProfile(updated[0] as Profile);
-          }
-        });
-      }
-      return;
-    }
-
-    // Profile missing — auto-create
-    const { data: insertData, error: insertError } = await supabaseFetch(
-      'profiles',
-      token,
-      { method: 'POST', body: { id: userId, display_name: null } }
-    );
-
-    if (insertError) {
-      setProfile(null);
-      return;
-    }
-
-    if (Array.isArray(insertData) && insertData.length > 0) {
-      setProfile(insertData[0]);
-    } else {
-      const { data: retryData } = await supabaseFetch(
-        `profiles?id=eq.${userId}&select=id,display_name,couple_id,spouse_email`,
-        token
-      );
-      if (Array.isArray(retryData) && retryData.length > 0) {
-        setProfile(retryData[0]);
-      }
-    }
-  };
-
-  const refreshProfile = async () => {
-    if (user) await fetchProfile(user.id);
   };
 
   const forceLogout = async () => {
@@ -175,91 +102,175 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setSession(null);
     setProfile(null);
+    lastFetchedUserIdRef.current = null;
     localStorage.removeItem('ens-onboarding-done');
   };
 
-  useEffect(() => {
-    const timeout = setTimeout(() => setLoading(false), 3000);
+  // Fetch profile — auto-create if missing + auto-pair via RPC.
+  // Guaranteed to settle even on network failure (10s internal timeout).
+  // Never blocks the auth `loading` state.
+  const fetchProfile = async (userId: string): Promise<void> => {
+    if (fetchingProfileRef.current) return; // dedupe parallel calls
+    fetchingProfileRef.current = true;
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      clearTimeout(timeout);
-
-      if (session?.user) {
-        const token = session.access_token;
-        const { data, error } = await supabaseFetch(
-          `profiles?id=eq.${session.user.id}&select=id&limit=1`,
-          token
-        );
-
-        setSession(session);
-        setUser(session.user);
-
-        // Even if the probe times out, still attempt fetchProfile so we don't
-        // leave the user in a session-but-no-profile state. fetchProfile has
-        // its own timeout via supabaseFetch.
-        if (error === 'timeout') {
-          console.warn('[AuthContext] profile probe timed out — calling fetchProfile anyway');
-          await fetchProfile(session.user.id);
-          setLoading(false);
-          return;
-        }
-
-        if (data?.code === 'PGRST301' || data?.message?.includes('JWT')) {
-          await forceLogout();
-          setLoading(false);
-          return;
-        }
-
-        await fetchProfile(session.user.id);
+    try {
+      const token = await getToken();
+      if (!token) {
+        setProfile(null);
+        return;
       }
-      setLoading(false);
-    }).catch(() => {
-      clearTimeout(timeout);
-      setLoading(false);
+
+      const { data, error } = await supabaseFetch(
+        `profiles?id=eq.${userId}&select=id,display_name,couple_id,spouse_email`,
+        token
+      );
+
+      if (error) {
+        console.warn('[fetchProfile] Network error:', error);
+        // Do NOT setProfile(null) here — keep whatever we had so the UI
+        // doesn't bounce from "paired" back to "not paired" on a transient
+        // network blip. User can tap "Recarregar perfil" to retry.
+        return;
+      }
+
+      if (data?.code === 'PGRST301' || data?.message?.includes('JWT')) {
+        await forceLogout();
+        return;
+      }
+
+      if (Array.isArray(data) && data.length > 0) {
+        const prof = data[0] as Profile;
+        setProfile(prof);
+        lastFetchedUserIdRef.current = userId;
+
+        // If not paired, try auto-pair via RPC (fire-and-forget; do NOT loop)
+        if (!prof.couple_id) {
+          supabaseRpc('check_and_pair', token).then(async ({ error: rpcErr }) => {
+            if (rpcErr) return;
+            // Single re-fetch attempt — no recursion possible because
+            // fetchProfile is mutex-protected and this is the last call.
+            fetchingProfileRef.current = false; // release lock for re-entry
+            const tok = await getToken();
+            if (!tok) return;
+            const { data: updated } = await supabaseFetch(
+              `profiles?id=eq.${userId}&select=id,display_name,couple_id,spouse_email`,
+              tok
+            );
+            if (Array.isArray(updated) && updated.length > 0) {
+              setProfile(updated[0] as Profile);
+            }
+          });
+        }
+        return;
+      }
+
+      // Profile missing — auto-create
+      const { data: insertData } = await supabaseFetch(
+        'profiles',
+        token,
+        { method: 'POST', body: { id: userId, display_name: null } }
+      );
+      if (Array.isArray(insertData) && insertData.length > 0) {
+        setProfile(insertData[0]);
+        lastFetchedUserIdRef.current = userId;
+      }
+    } finally {
+      fetchingProfileRef.current = false;
+    }
+  };
+
+  const refreshProfile = async () => {
+    if (user) await fetchProfile(user.id);
+  };
+
+  // ─────────────────────────────────────────────────────────────────
+  // Auth bootstrap effect — runs ONCE per provider mount.
+  //
+  // Key invariants:
+  //   1. `loading` only blocks until we know the auth state — never on
+  //      profile fetch. supabase.auth.getSession() reads from localStorage
+  //      and is synchronous-fast, so loading clears immediately.
+  //   2. Profile fetches in the background after `loading` is false.
+  //   3. Realtime listener ONLY merges into state — it does NOT trigger
+  //      another fetchProfile (used to cause runaway cascades).
+  // ─────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    let mounted = true;
+    const safetyTimeout = setTimeout(() => {
+      if (mounted) {
+        console.warn('[AuthContext] safety timeout — releasing loading state');
+        setLoading(false);
+      }
+    }, 4000);
+
+    // 1. Boot from existing session (if any)
+    supabase.auth.getSession().then(({ data: { session: s } }) => {
+      if (!mounted) return;
+      clearTimeout(safetyTimeout);
+      setSession(s);
+      setUser(s?.user ?? null);
+      setLoading(false); // ← unblock UI immediately
+
+      // Profile fetch is fire-and-forget; do NOT await
+      if (s?.user) {
+        fetchProfile(s.user.id).catch(e => console.warn('[AuthContext] initial fetchProfile error', e));
+      }
+    }).catch(e => {
+      console.warn('[AuthContext] getSession failed', e);
+      if (mounted) {
+        clearTimeout(safetyTimeout);
+        setLoading(false);
+      }
     });
 
+    // 2. Listen for future auth changes (sign-in, sign-out, token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          await fetchProfile(session.user.id);
+      (_event, s) => {
+        if (!mounted) return;
+        setSession(s);
+        setUser(s?.user ?? null);
+        setLoading(false);
+
+        if (s?.user) {
+          if (lastFetchedUserIdRef.current !== s.user.id) {
+            fetchProfile(s.user.id).catch(e => console.warn('[AuthContext] onAuthChange fetchProfile error', e));
+          }
         } else {
           setProfile(null);
+          lastFetchedUserIdRef.current = null;
         }
-        setLoading(false);
       }
     );
 
-    let realtimeChannel: ReturnType<typeof supabase.channel> | null = null;
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
-      if (s?.user) {
-        realtimeChannel = supabase
-          .channel('profile-pairing')
-          .on('postgres_changes', {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'profiles',
-            filter: `id=eq.${s.user.id}`,
-          }, (payload) => {
-            // Merge with existing state — if replica identity isn't FULL,
-            // payload.new may only contain changed columns. Overwriting would
-            // wipe couple_id / display_name when only spouse_email changed.
-            const incoming = payload.new as Partial<Profile>;
-            setProfile(prev => (prev ? { ...prev, ...incoming } : (incoming as Profile)));
-            // After any profile update, re-fetch the full row to guarantee
-            // every column is fresh (cheap and removes ambiguity).
-            if (s.user) fetchProfile(s.user.id);
-          })
-          .subscribe();
-      }
-    });
-
     return () => {
+      mounted = false;
+      clearTimeout(safetyTimeout);
       subscription.unsubscribe();
-      realtimeChannel?.unsubscribe();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ─────────────────────────────────────────────────────────────────
+  // Realtime profile subscription — separate effect, tied to user.id.
+  // Re-creates the channel when the user changes (sign-in / sign-out).
+  // Only merges; never triggers another fetch (no cascade risk).
+  // ─────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel(`profile:${user.id}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'profiles',
+        filter: `id=eq.${user.id}`,
+      }, (payload) => {
+        const incoming = payload.new as Partial<Profile>;
+        setProfile(prev => (prev ? { ...prev, ...incoming } : (incoming as Profile)));
+      })
+      .subscribe();
+    return () => { channel.unsubscribe(); };
+  }, [user]);
 
   const signUp = async (email: string, password: string) => {
     const { error } = await supabase.auth.signUp({ email, password });
