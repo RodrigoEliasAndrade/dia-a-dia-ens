@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useMemo, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo, useRef, useEffect, type ReactNode } from 'react';
 
 /**
  * Global aggregator for sync activity across all useSyncedStorage instances.
@@ -17,10 +17,13 @@ interface SyncContextType {
 
 const SyncContext = createContext<SyncContextType | null>(null);
 
+const ERROR_AUTO_CLEAR_MS = 5000;
+
 export function SyncProvider({ children }: { children: ReactNode }) {
   const [activeKeys, setActiveKeys] = useState<Set<string>>(new Set());
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [hasError, setHasError] = useState(false);
+  const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const reportStart = useCallback((key: string) => {
     setActiveKeys(prev => {
@@ -40,6 +43,10 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     });
     setLastSavedAt(at);
     setHasError(false);
+    if (errorTimerRef.current) {
+      clearTimeout(errorTimerRef.current);
+      errorTimerRef.current = null;
+    }
   }, []);
 
   const reportError = useCallback((key: string) => {
@@ -50,6 +57,19 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       return next;
     });
     setHasError(true);
+    // Auto-clear the error flag so a one-off failure doesn't leave a
+    // permanent red pill on screen.
+    if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+    errorTimerRef.current = setTimeout(() => {
+      setHasError(false);
+      errorTimerRef.current = null;
+    }, ERROR_AUTO_CLEAR_MS);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+    };
   }, []);
 
   const value = useMemo(
