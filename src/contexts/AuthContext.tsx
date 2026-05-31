@@ -191,9 +191,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           token
         );
 
+        setSession(session);
+        setUser(session.user);
+
+        // Even if the probe times out, still attempt fetchProfile so we don't
+        // leave the user in a session-but-no-profile state. fetchProfile has
+        // its own timeout via supabaseFetch.
         if (error === 'timeout') {
-          setSession(session);
-          setUser(session.user);
+          console.warn('[AuthContext] profile probe timed out — calling fetchProfile anyway');
+          await fetchProfile(session.user.id);
           setLoading(false);
           return;
         }
@@ -204,8 +210,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        setSession(session);
-        setUser(session.user);
         await fetchProfile(session.user.id);
       }
       setLoading(false);
@@ -238,7 +242,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             table: 'profiles',
             filter: `id=eq.${s.user.id}`,
           }, (payload) => {
-            setProfile(payload.new as Profile);
+            // Merge with existing state — if replica identity isn't FULL,
+            // payload.new may only contain changed columns. Overwriting would
+            // wipe couple_id / display_name when only spouse_email changed.
+            const incoming = payload.new as Partial<Profile>;
+            setProfile(prev => (prev ? { ...prev, ...incoming } : (incoming as Profile)));
+            // After any profile update, re-fetch the full row to guarantee
+            // every column is fresh (cheap and removes ambiguity).
+            if (s.user) fetchProfile(s.user.id);
           })
           .subscribe();
       }

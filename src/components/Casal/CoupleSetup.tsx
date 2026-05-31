@@ -1,14 +1,29 @@
 import { useState } from 'react';
-import { Heart, CheckCircle, LogOut, Edit3, Clock } from 'lucide-react';
+import { Heart, CheckCircle, LogOut, Edit3, Clock, RefreshCcw } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function CoupleSetup() {
-  const { user, profile, signOut, setSpouseEmail } = useAuth();
+  const { user, profile, signOut, setSpouseEmail, refreshProfile } = useAuth();
   const [email, setEmail] = useState('');
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  const handleManualRefresh = async () => {
+    setRefreshing(true);
+    setError('');
+    setSuccess('');
+    try {
+      await refreshProfile();
+      setSuccess('Perfil recarregado.');
+      setTimeout(() => setSuccess(''), 2000);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Falha ao recarregar perfil.');
+    }
+    setRefreshing(false);
+  };
 
   if (!user) return null;
 
@@ -127,6 +142,18 @@ export default function CoupleSetup() {
   // ─── Enter spouse email (first time or editing) ───
   return (
     <div className="space-y-4">
+      {/* Manual refresh — visible when not paired, in case profile got out of sync */}
+      {!editing && (
+        <button
+          onClick={handleManualRefresh}
+          disabled={refreshing}
+          className="w-full bg-ens-blue/5 border border-ens-blue/20 rounded-xl p-3 flex items-center justify-center gap-2 text-xs text-ens-blue font-medium active:scale-[0.98] transition-transform"
+        >
+          <RefreshCcw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+          {refreshing ? 'Sincronizando...' : 'Já cadastrei o cônjuge? Recarregar perfil'}
+        </button>
+      )}
+
       <div className="bg-white rounded-xl p-5 shadow-sm">
         <div className="text-center mb-4">
           <Heart className="w-10 h-10 text-ens-gold mx-auto mb-3" />
