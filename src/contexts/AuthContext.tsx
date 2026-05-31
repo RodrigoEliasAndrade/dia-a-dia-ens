@@ -13,6 +13,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   profile: Profile | null;
+  spouseProfile: Profile | null;
   loading: boolean;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
@@ -85,12 +86,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [spouseProfile, setSpouseProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Mutex to prevent concurrent fetchProfile calls causing race conditions.
   const fetchingProfileRef = useRef(false);
   // Tracks the last userId we successfully fetched for, so we know when to refetch.
   const lastFetchedUserIdRef = useRef<string | null>(null);
+
+  // Fetches the spouse's profile when the user is paired. Requires the
+  // "Users can view spouse profile" RLS policy (supabase-spouse-visibility.sql).
+  const fetchSpouseProfile = async (coupleId: string, ownUserId: string) => {
+    const token = await getToken();
+    if (!token) return;
+    const { data, error } = await supabaseFetch(
+      `profiles?couple_id=eq.${coupleId}&id=neq.${ownUserId}&select=id,display_name,couple_id,spouse_email`,
+      token,
+    );
+    if (error) {
+      console.warn('[fetchSpouseProfile] error', error);
+      return;
+    }
+    if (Array.isArray(data) && data.length > 0) {
+      setSpouseProfile(data[0] as Profile);
+    } else {
+      setSpouseProfile(null);
+    }
+  };
 
   const getToken = async (): Promise<string | null> => {
     const { data } = await supabase.auth.getSession();
@@ -102,6 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setSession(null);
     setProfile(null);
+    setSpouseProfile(null);
     lastFetchedUserIdRef.current = null;
     localStorage.removeItem('ens-onboarding-done');
   };
@@ -143,21 +166,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfile(prof);
         lastFetchedUserIdRef.current = userId;
 
-        // If not paired, try auto-pair via RPC (fire-and-forget; do NOT loop)
-        if (!prof.couple_id) {
+        // If paired, also load the spouse's profile (for displaying their name).
+        if (prof.couple_id) {
+          fetchSpouseProfile(prof.couple_id, userId).catch(e =>
+            console.warn('[fetchSpouseProfile] failed', e),
+          );
+        } else {
+          setSpouseProfile(null);
+          // If not paired, try auto-pair via RPC (fire-and-forget; do NOT loop)
           supabaseRpc('check_and_pair', token).then(async ({ error: rpcErr }) => {
             if (rpcErr) return;
-            // Single re-fetch attempt — no recursion possible because
-            // fetchProfile is mutex-protected and this is the last call.
             fetchingProfileRef.current = false; // release lock for re-entry
             const tok = await getToken();
             if (!tok) return;
             const { data: updated } = await supabaseFetch(
               `profiles?id=eq.${userId}&select=id,display_name,couple_id,spouse_email`,
-              tok
+              tok,
             );
             if (Array.isArray(updated) && updated.length > 0) {
-              setProfile(updated[0] as Profile);
+              const updatedProf = updated[0] as Profile;
+              setProfile(updatedProf);
+              if (updatedProf.couple_id) {
+                fetchSpouseProfile(updatedProf.couple_id, userId).catch(() => {});
+              }
             }
           });
         }
@@ -287,6 +318,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setSession(null);
     setProfile(null);
+    setSpouseProfile(null);
+    lastFetchedUserIdRef.current = null;
   };
 
   const updateProfile = async (updates: Partial<Profile>) => {
@@ -329,7 +362,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider value={{
-      user, session, profile, loading,
+      user, session, profile, spouseProfile, loading,
       signUp, signIn, signOut, updateProfile, refreshProfile, setSpouseEmail,
       sendPasswordReset,
     }}>

@@ -3,7 +3,7 @@ import { Heart, CheckCircle, LogOut, Edit3, Clock, RefreshCcw } from 'lucide-rea
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function CoupleSetup() {
-  const { user, profile, signOut, setSpouseEmail, refreshProfile } = useAuth();
+  const { user, profile, spouseProfile, signOut, setSpouseEmail, refreshProfile } = useAuth();
   const [email, setEmail] = useState('');
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -62,25 +62,53 @@ export default function CoupleSetup() {
 
   // ─── Already paired ───────────────────────────
   if (profile?.couple_id) {
+    const myName = profile.display_name?.trim();
+    const spouseName = spouseProfile?.display_name?.trim();
+    const spouseLabel = spouseName || profile.spouse_email || 'Seu cônjuge';
+    const myLabel = myName || user.email || 'Você';
+
+    // Build the prominent "Rodrigo e Vivian" headline.
+    // If either name is missing, show whatever we have.
+    const headline =
+      myName && spouseName
+        ? `${myName} e ${spouseName}`
+        : myName
+        ? `${myName} e ${spouseLabel}`
+        : spouseName
+        ? `${myLabel} e ${spouseName}`
+        : 'Casal conectado';
+
+    const namesMissing = !myName || !spouseName;
+
     return (
       <div className="space-y-4">
-        <div className="bg-white rounded-xl p-5 shadow-sm text-center">
-          <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-            <CheckCircle className="w-6 h-6 text-green-600" />
+        <div className="bg-white rounded-xl p-6 shadow-sm text-center">
+          <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+            <CheckCircle className="w-7 h-7 text-green-600" />
           </div>
-          <h3 className="font-semibold text-ens-blue mb-1">Casal conectado</h3>
-          <p className="text-xs text-ens-text-light">
-            Seus dados de oração conjugal estão sincronizados.
-          </p>
-          {profile.spouse_email && (
-            <p className="text-xs text-ens-text-light mt-2">
-              Cônjuge: <span className="font-medium">{profile.spouse_email}</span>
-            </p>
-          )}
-          <p className="text-xs text-ens-text-light mt-1">
-            Logado como: <span className="font-medium">{user.email}</span>
-          </p>
+          <h2 className="text-lg font-bold text-ens-blue mb-1 capitalize">{headline}</h2>
+          <p className="text-xs text-ens-text-light italic mb-3">Casal conectado ❤️</p>
+
+          <div className="mt-4 space-y-1.5 text-xs text-ens-text-light">
+            <div>
+              <span className="text-ens-text-light/70">Você:</span>{' '}
+              <span className="font-medium text-ens-text">{myLabel}</span>
+            </div>
+            <div>
+              <span className="text-ens-text-light/70">Cônjuge:</span>{' '}
+              <span className="font-medium text-ens-text">{spouseLabel}</span>
+            </div>
+          </div>
         </div>
+
+        {namesMissing && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-900 leading-relaxed">
+            <strong>Personalize:</strong>{' '}
+            {!myName
+              ? 'Adicione seu nome em Ajustes pra ficar "Seu Nome e ' + (spouseName ?? 'Cônjuge') + '".'
+              : 'Peça pro seu cônjuge adicionar o nome em Ajustes pra ficar "' + myName + ' e [Nome]".'}
+          </div>
+        )}
 
         <button
           onClick={signOut}
