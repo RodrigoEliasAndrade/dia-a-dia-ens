@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { Lock, Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { Lock, Eye, EyeOff, ArrowLeft, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useStorageAccess } from '../../hooks/useStorageAccess';
 
 type Mode = 'signup' | 'signin' | 'reset';
 
 export default function LoginSlide() {
   const { signUp, signIn, sendPasswordReset } = useAuth();
+  const { storageOk } = useStorageAccess();
   const [mode, setMode] = useState<Mode>('signup');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -25,12 +27,27 @@ export default function LoginSlide() {
 
     if (!email.trim()) return;
 
+    const friendlyError = (rawMsg: string): string => {
+      const m = rawMsg.toLowerCase();
+      // iOS Safari fetch failure — most often Private Browsing / blocked cookies
+      if (m.includes('load failed')) {
+        return 'O Safari está bloqueando o app. Tente: (1) sair do modo privado, ou (2) Ajustes → Safari → desligar "Bloquear Todos os Cookies".';
+      }
+      if (m.includes('failed to fetch') || m.includes('networkerror') || m.includes('network request')) {
+        return 'Sem conexão com o servidor. Verifique sua internet e tente novamente.';
+      }
+      if (m.includes('rate') || m.includes('too many')) {
+        return 'Muitas tentativas em pouco tempo. Aguarde alguns minutos e tente novamente.';
+      }
+      return rawMsg || 'Erro inesperado. Tente novamente.';
+    };
+
     if (mode === 'reset') {
       setLoading(true);
       const { error } = await sendPasswordReset(email.trim());
       setLoading(false);
       if (error) {
-        setError('Não foi possível enviar o e-mail. Verifique e tente novamente.');
+        setError(friendlyError(error.message || ''));
       } else {
         setInfo('Enviamos um link de recuperação para o seu e-mail. Verifique sua caixa de entrada.');
       }
@@ -48,7 +65,12 @@ export default function LoginSlide() {
     if (mode === 'signin') {
       const { error } = await signIn(email.trim(), password);
       if (error) {
-        setError('E-mail ou senha incorretos.');
+        const msg = error.message || '';
+        if (msg.toLowerCase().includes('load failed') || msg.toLowerCase().includes('failed to fetch')) {
+          setError(friendlyError(msg));
+        } else {
+          setError('E-mail ou senha incorretos.');
+        }
       }
     } else {
       const { error } = await signUp(email.trim(), password);
@@ -56,13 +78,11 @@ export default function LoginSlide() {
         const msg = error.message || '';
         if (msg.includes('already registered') || msg.includes('already been registered')) {
           setError('Este e-mail já tem conta. Use "Já tem conta? Entrar".');
-        } else if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
-          setError('Sem conexão com o servidor. Verifique sua internet e tente novamente.');
         } else {
-          setError(msg || 'Erro ao criar conta. Tente novamente.');
+          setError(friendlyError(msg));
         }
       } else {
-        setInfo('Conta criada! Verifique seu e-mail para confirmar (se solicitado).');
+        setInfo('Conta criada! Verifique seu e-mail para confirmar antes de entrar.');
       }
     }
     setLoading(false);
@@ -93,6 +113,19 @@ export default function LoginSlide() {
 
       <h2 className="text-xl font-bold text-ens-blue mb-2">{headerTitle}</h2>
       <p className="text-sm text-ens-text-light mb-6 max-w-xs">{headerSubtitle}</p>
+
+      {!storageOk && (
+        <div className="w-full max-w-sm mb-4 bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2 text-left">
+          <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+          <div className="text-xs text-amber-800 leading-relaxed">
+            <strong>Atenção:</strong> Seu navegador está bloqueando o armazenamento (modo privado ou cookies bloqueados).
+            O app pode não conseguir te manter logado.
+            <span className="block mt-1">
+              Tente sair da aba privada ou em Ajustes → Safari, desligar "Bloquear Todos os Cookies".
+            </span>
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="w-full max-w-sm">
         <input
