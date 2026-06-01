@@ -13,6 +13,18 @@ import type { Ficha, Registro, Fonte, Disposicao, Perfil, Momento } from '../../
 
 const ESTADO_PILOTO = 'abandono-oracao-pessoal';
 
+/**
+ * Normaliza o texto para leitura limpa: troca aspas angulares «» (estilo
+ * litúrgico) por aspas comuns e remove espaços estranhos junto a elas.
+ * Não altera o conteúdo canônico — só a exibição.
+ */
+function limparTexto(s: string): string {
+  return s
+    .replace(/«\s*/g, '"')
+    .replace(/\s*»/g, '"')
+    .replace(/ /g, ' '); // espaço não-quebrável → espaço normal
+}
+
 const REGISTROS: { id: Registro; label: string }[] = [
   { id: 'coracao', label: 'Coração' },
   { id: 'cotidiano', label: 'Cotidiano' },
@@ -235,22 +247,22 @@ export default function SabedoriasPage() {
             </span>
           </div>
 
-          <p className="text-sm text-ens-text leading-relaxed whitespace-pre-line">
-            {fichaAtual.texto}
+          <p className="text-lg text-ens-text leading-loose whitespace-pre-line">
+            {limparTexto(fichaAtual.texto)}
           </p>
 
-          <div className="flex items-center gap-1.5 mt-3">
-            <BookOpen className="w-3.5 h-3.5 text-ens-gold shrink-0" />
-            <span className="text-xs text-ens-gold font-medium">{fichaAtual.referencia}</span>
+          <div className="flex items-center gap-1.5 mt-4">
+            <BookOpen className="w-4 h-4 text-ens-gold shrink-0" />
+            <span className="text-sm text-ens-gold font-semibold">{fichaAtual.referencia}</span>
           </div>
 
           {fichaAtual.proximo_passo && (
-            <div className="mt-4 bg-ens-blue/5 rounded-xl p-3 border-l-4 border-ens-blue">
-              <div className="flex items-center gap-1.5 mb-1">
-                <Footprints className="w-3.5 h-3.5 text-ens-blue" />
-                <span className="text-xs font-semibold text-ens-blue">Próximo passo</span>
+            <div className="mt-4 bg-ens-blue/5 rounded-xl p-4 border-l-4 border-ens-blue">
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <Footprints className="w-4 h-4 text-ens-blue" />
+                <span className="text-sm font-semibold text-ens-blue">Próximo passo</span>
               </div>
-              <p className="text-sm text-ens-text">{fichaAtual.proximo_passo}</p>
+              <p className="text-base text-ens-text leading-relaxed">{limparTexto(fichaAtual.proximo_passo)}</p>
             </div>
           )}
 
