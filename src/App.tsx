@@ -14,6 +14,7 @@ import { useLocalStorage } from './hooks/useLocalStorage';
 import { useFontSize } from './hooks/useFontSize';
 
 const PCEsPage = lazy(() => import('./components/PCEs/PCEsPage'));
+const SabedoriasPage = lazy(() => import('./components/Sabedorias/SabedoriasPage'));
 const PCEDetailPage = lazy(() => import('./components/PCEs/PCEDetailPage'));
 const DiarioPage = lazy(() => import('./components/Diario/DiarioPage'));
 const CasalPage = lazy(() => import('./components/Casal/CasalPage'));
@@ -62,6 +63,7 @@ function AppContent() {
           <Route path="/pces" element={<PCEsPage />} />
           <Route path="/pces/:pceId" element={<PCEDetailPage />} />
           <Route path="/diario" element={<DiarioPage />} />
+          <Route path="/sabedorias" element={<SabedoriasPage />} />
           <Route path="/casal" element={<CasalPage />} />
           <Route path="/configuracoes" element={<SettingsPage />} />
           <Route path="/oracao-pessoal" element={<OracaoPessoalFlow />} />

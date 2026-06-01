@@ -1,0 +1,114 @@
+[
+  {
+    "id": "abandono-oracao-pessoal",
+    "rotulo_tela": "Deixei de rezar sozinho",
+    "descricao": "Parei a oração pessoal e ando desanimado.",
+    "leitura_caridosa": "Provavelmente não é falta de fé, e sim cansaço, culpa ou a sensação de que 'não adianta'. Tratar com acolhimento, nunca com cobrança.",
+    "pce_relacionado": "oracao-pessoal",
+    "prioridade_mvp": true
+  },
+  {
+    "id": "abandono-oracao-conjugal",
+    "rotulo_tela": "Paramos de rezar juntos",
+    "descricao": "O casal deixou a oração conjugal de lado.",
+    "leitura_caridosa": "Costuma ser falta de tempo, vergonha ou cansaço — raramente falta de amor. Reabrir com leveza.",
+    "pce_relacionado": "oracao-conjugal",
+    "prioridade_mvp": true
+  },
+  {
+    "id": "aridez-na-oracao",
+    "rotulo_tela": "Rezo, mas não sinto nada",
+    "descricao": "A oração parece vazia, seca.",
+    "leitura_caridosa": "A aridez é normal e até sinal de crescimento — a fé se purifica do sentimento. Instruir e consolar, não alarmar.",
+    "pce_relacionado": "oracao-pessoal",
+    "prioridade_mvp": true
+  },
+  {
+    "id": "falta-de-tempo",
+    "rotulo_tela": "Não tenho tempo",
+    "descricao": "A correria do dia engole a oração.",
+    "leitura_caridosa": "Quase sempre é verdade objetiva, não desculpa. Respeitar o tempo de vida e oferecer o mínimo realista.",
+    "pce_relacionado": null,
+    "prioridade_mvp": true
+  },
+  {
+    "id": "cansaco-exaustao",
+    "rotulo_tela": "Estou exausto",
+    "descricao": "Sem energia para mais nada.",
+    "leitura_caridosa": "Corpo e alma cansados. Consolar e oferecer descanso em Deus, não mais uma tarefa.",
+    "pce_relacionado": null,
+    "prioridade_mvp": true
+  },
+  {
+    "id": "distracao-rotina",
+    "rotulo_tela": "Virou automático",
+    "descricao": "A oração virou hábito morno, sem alma.",
+    "leitura_caridosa": "Reacender o sentido, sem culpar. Trazer novidade e profundidade.",
+    "pce_relacionado": "oracao-pessoal",
+    "prioridade_mvp": false
+  },
+  {
+    "id": "conflito-no-casal",
+    "rotulo_tela": "Brigamos / há distância",
+    "descricao": "Conflito ou frieza entre o casal.",
+    "leitura_caridosa": "Ferida aberta; precisa de cuidado e de caminho de reconciliação, não de lição.",
+    "pce_relacionado": "dever-sentar",
+    "prioridade_mvp": false
+  },
+  {
+    "id": "desanimo-apos-queda",
+    "rotulo_tela": "Caí e me sinto indigno",
+    "descricao": "Pecado/falha seguido de desânimo e indignidade.",
+    "leitura_caridosa": "O risco é a culpa que paralisa. Anunciar a misericórdia e reconduzir à Reconciliação.",
+    "pce_relacionado": null,
+    "prioridade_mvp": false
+  },
+  {
+    "id": "duvida-na-fe",
+    "rotulo_tela": "Estou em dúvida",
+    "descricao": "Questionamentos e vacilo na fé.",
+    "leitura_caridosa": "Dúvida não é pecado; pode ser passo de amadurecimento. Acolher a pergunta com respeito.",
+    "pce_relacionado": null,
+    "prioridade_mvp": false
+  },
+  {
+    "id": "sofrimento-e-prova",
+    "rotulo_tela": "Estou sofrendo",
+    "descricao": "Dor, doença, luto, crise.",
+    "leitura_caridosa": "Estar junto antes de explicar. Consolar; jamais banalizar a dor.",
+    "pce_relacionado": null,
+    "prioridade_mvp": false
+  },
+  {
+    "id": "fidelidade-perseverante",
+    "rotulo_tela": "Tenho sido fiel",
+    "descricao": "Venho mantendo os PCEs; quero alimento e crescimento.",
+    "leitura_caridosa": "Confirmar no bem e abrir horizonte de crescimento. Palavra de graça, não de cobrança.",
+    "pce_relacionado": null,
+    "prioridade_mvp": true
+  },
+  {
+    "id": "gratidao",
+    "rotulo_tela": "Meu coração está cheio",
+    "descricao": "Momento de gratidão; quero render graças.",
+    "leitura_caridosa": "Ajudar a nomear e oferecer a Deus a alegria. Cultivar a consolação.",
+    "pce_relacionado": null,
+    "prioridade_mvp": false
+  },
+  {
+    "id": "desejo-de-mais",
+    "rotulo_tela": "Quero ir além",
+    "descricao": "Sede de aprofundar, servir, buscar a santidade.",
+    "leitura_caridosa": "Canalizar o desejo para passos concretos e para a vida de equipe/serviço.",
+    "pce_relacionado": null,
+    "prioridade_mvp": false
+  },
+  {
+    "id": "preciso-de-uma-palavra",
+    "rotulo_tela": "Só preciso de uma palavra hoje",
+    "descricao": "Entrada genérica quando a pessoa não nomeia um estado específico.",
+    "leitura_caridosa": "Default acolhedor da aba SABEDORIAS. Priorizar a coerência litúrgica do dia.",
+    "pce_relacionado": null,
+    "prioridade_mvp": true
+  }
+]
