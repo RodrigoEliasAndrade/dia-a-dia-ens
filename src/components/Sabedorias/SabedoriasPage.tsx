@@ -73,6 +73,27 @@ export default function SabedoriasPage() {
     [disposicao, estacaoFilhos, repeticao],
   );
 
+  // Ranking completo para transparência do teste (debug)
+  const ranking = useMemo(
+    () => selecionar(FICHAS, perfil, momento, vistas),
+    [perfil, momento, vistas],
+  );
+
+  // Quais fontes existem no degrau alvo (explica por que mudar a fonte pode
+  // não mudar a escolha — há lacuna de conteúdo nesse degrau).
+  const fontesNoDegrau = useMemo(() => {
+    const alvoLocal = degrauAlvo(repeticao);
+    const set = new Set(
+      FICHAS.filter(
+        f =>
+          f.estado.includes(ESTADO_PILOTO) &&
+          f.degrau === alvoLocal &&
+          !(disposicao === 'desolacao' && f.tom === 'exortar'),
+      ).map(f => f.fonte),
+    );
+    return Array.from(set);
+  }, [repeticao, disposicao]);
+
   const rodarMotor = (excluir: string[]) => {
     const ranking = selecionar(FICHAS, perfil, momento, excluir);
     if (ranking.length === 0) {
@@ -156,6 +177,11 @@ export default function SabedoriasPage() {
               </Chip>
             ))}
           </SimRow>
+          <p className="text-[0.625rem] text-ens-text-light -mt-1">
+            No degrau alvo {alvo} só há fichas de: <strong>{fontesNoDegrau.join(', ') || '—'}</strong>.
+            Escolher outra fonte não muda a escolha se não houver ficha dela neste degrau
+            (o motor usa a mais próxima).
+          </p>
           <SimRow label="Disposição">
             {DISPOSICOES.map(d => (
               <Chip key={d.id} active={disposicao === d.id} onClick={() => setDisposicao(d.id)}>
@@ -303,6 +329,43 @@ export default function SabedoriasPage() {
           Vistas nesta sessão: {vistas.length} · degrau alvo {alvo}
         </p>
       )}
+
+      {/* Ranking transparente — mostra por que uma ficha venceu */}
+      <details className="bg-white rounded-xl shadow-sm mt-4">
+        <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-ens-blue">
+          🔍 Ver ranking do motor ({ranking.length} candidatas)
+        </summary>
+        <div className="px-4 pb-4">
+          <p className="text-[0.625rem] text-ens-text-light mb-2">
+            Candidatas no degrau alvo {alvo}, ordenadas por nota. A de maior nota é
+            a escolhida. Mudar perfil/momento muda as notas.
+          </p>
+          {ranking.length === 0 ? (
+            <p className="text-xs text-ens-text-light">Nenhuma candidata (tudo já visto ou filtrado).</p>
+          ) : (
+            <div className="space-y-1.5">
+              {ranking.map((r, i) => (
+                <div
+                  key={r.ficha.id}
+                  className={`flex items-center gap-2 text-xs rounded-lg px-2.5 py-1.5 ${
+                    i === 0 ? 'bg-ens-blue/10' : 'bg-gray-50'
+                  }`}
+                >
+                  <span className="font-bold text-ens-blue w-10 shrink-0">
+                    {r.nota.toFixed(1)}
+                  </span>
+                  <span className="flex-1 min-w-0 truncate text-ens-text">
+                    {r.ficha.referencia}
+                  </span>
+                  <span className="text-ens-text-light shrink-0">
+                    {r.ficha.fonte} · {r.ficha.registro}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </details>
     </div>
   );
 }
