@@ -22,7 +22,7 @@ function limparTexto(s: string): string {
   return s
     .replace(/«\s*/g, '"')
     .replace(/\s*»/g, '"')
-    .replace(/ /g, ' '); // espaço não-quebrável → espaço normal
+    .replace(/\u00A0/g, ' '); // espaço não-quebrável → espaço normal
 }
 
 const REGISTROS: { id: Registro; label: string }[] = [
