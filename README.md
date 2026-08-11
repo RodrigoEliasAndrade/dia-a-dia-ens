@@ -25,6 +25,8 @@ sentar-se, regra de vida e retiro anual.
 - React Router 7
 - Supabase Auth, Postgres, RLS e Realtime
 - vite-plugin-pwa / Workbox
+- Vitest + Testing Library
+- Playwright (Android/Chrome e iPhone/Safari)
 
 ## Requisitos
 
@@ -57,9 +59,22 @@ Valide antes de publicar:
 
 ```bash
 npm run lint
+npm test
+npm run test:e2e
 npm run build
 npm audit --audit-level=moderate
 ```
+
+Para gerar o relatório local de cobertura:
+
+```bash
+npm run test:coverage
+```
+
+Os testes E2E usam um Supabase simulado em endereço local e não acessam o banco
+de produção. Eles cobrem login, recuperação de senha, pareamento, navegação nos
+PCEs, logout e instalação PWA nos dois perfis móveis. A validação final em
+aparelhos físicos está em `MOBILE-RELEASE-CHECKLIST.md`.
 
 ## Supabase
 

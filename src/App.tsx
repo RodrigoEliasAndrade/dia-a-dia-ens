@@ -55,7 +55,6 @@ function AppContent() {
     <BrowserRouter basename="/dia-a-dia-ens">
       <InitialSyncOverlay />
       <SyncIndicator />
-      <UpdatePrompt />
       <InstallPrompt />
       <Suspense fallback={<RouteFallback />}>
         <Routes>
@@ -81,6 +80,7 @@ function AppContent() {
 export default function App() {
   return (
     <ErrorBoundary>
+      <UpdatePrompt />
       <AuthProvider>
         <SyncProvider>
           <AppContent />
