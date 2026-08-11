@@ -1,64 +1,58 @@
-# Ações de segurança que VOCÊ precisa fazer
+# Ações de segurança
 
-Estas ações requerem acesso a contas externas e não podem ser feitas pelo código.
+Este arquivo separa o que já foi corrigido no repositório do que ainda depende
+de acesso a contas externas.
 
-## 1. 🔴 URGENTE — Revogar GitHub PAT exposto
+## Concluído no repositório
 
-O git remote contém um Personal Access Token hardcoded. Qualquer um com acesso ao repositório local (ou ao histórico) pode usá-lo.
+- O `origin` local não contém mais Personal Access Token.
+- `.env`, `dist`, `node_modules` e `.DS_Store` estão ignorados e não estão rastreados.
+- `.github/workflows/deploy.yml` usa GitHub Secrets para as variáveis do Supabase.
+- Os GitHub Secrets `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` foram criados.
+- O workflow roda lint, audit de dependências e build antes do deploy.
+- As permissões do GitHub Actions foram limitadas por job.
+- O schema de produção foi consolidado em `supabase/migrations/` e registrado no
+  histórico remoto do Supabase.
+- `supabase-security-verify.sql` retornou `ok` em todas as 31 verificações de
+  RLS, privilégios, funções, índices e realtime.
+- O Data API não permite acesso anônimo às tabelas privadas.
+- Usuários não podem alterar `profiles.couple_id` diretamente; o campo é
+  controlado pelo pareamento mútuo.
+- A confirmação de e-mail no Supabase está ativada.
+- O app exige senha com mínimo de 8 caracteres no frontend.
+- O app tem botão e fluxo de login com Google OAuth.
+- O provider Google OAuth foi configurado no Supabase.
+- O Google OAuth Client Secret exposto durante a configuração foi rotacionado.
 
-**Token comprometido:** `ghp_Krkaw…` (redacted — já revogado em 2026-05-31)
+## Ações externas pendentes
 
-**Passos:**
+Estas ações requerem acesso ao GitHub/Supabase e não podem ser concluídas só por
+código local.
+
+### 1. Confirmar revogação do GitHub PAT exposto
+
+O remoto local já foi limpo, mas se um Personal Access Token apareceu em algum
+ponto no histórico local ou em logs, ele deve permanecer revogado.
 
 1. Acesse https://github.com/settings/tokens
-2. Localize o token e clique em **Delete** (ou **Revoke**)
-3. Gere um novo token (ou prefira SSH)
-4. No terminal, dentro do projeto, rode:
+2. Confirme que o token antigo foi excluído/revogado.
+3. Prefira autenticação via SSH ou `gh auth login`.
+
+Comando seguro para manter o remoto sem token:
+
    ```bash
    git remote set-url origin https://github.com/RodrigoEliasAndrade/dia-a-dia-ens.git
    ```
-5. Configure autenticação via SSH ou `gh auth login`
 
-## 2. 🔴 Mover credenciais do CI para GitHub Secrets
+### 2. Publicar ou limitar Google OAuth
 
-Atualmente `.github/workflows/deploy.yml` tem a URL e a anon key do Supabase hardcoded no YAML.
+O Google Auth Platform indicou que o OAuth está restrito a test users. Para uso
+real, publique o app no Google Auth Platform ou adicione explicitamente os
+e-mails que poderão testar.
 
-**Passos:**
+### 3. Proteção contra senhas vazadas
 
-1. Acesse https://github.com/RodrigoEliasAndrade/dia-a-dia-ens/settings/secrets/actions
-2. Clique em **New repository secret** e crie:
-   - Nome: `VITE_SUPABASE_URL`, Valor: `https://lfnvoiemdkpiwxwxhihr.supabase.co`
-   - Nome: `VITE_SUPABASE_ANON_KEY`, Valor: a anon key (mesma que já estava no workflow)
-3. O workflow já foi atualizado para usar `${{ secrets.* }}` — o próximo push usará os secrets
-
-> ⚠️ A anon key é tecnicamente pública (vai pro browser), mas usar Secrets evita exposição em logs e simplifica rotação.
-
-## 3. 🔴 Habilitar confirmação de email no Supabase
-
-Sem isso, qualquer um pode criar conta com email falso (e ser pareado automaticamente com outra pessoa).
-
-**Passos:**
-
-1. Acesse https://supabase.com/dashboard/project/lfnvoiemdkpiwxwxhihr/auth/providers
-2. Clique em **Email**
-3. Marque **Enable email confirmations**
-4. Salve
-
-## 4. ⚠️ Rodar a migration de segurança
-
-Há um novo arquivo `supabase-security-hardening.sql` na raiz do projeto que:
-- Restringe a policy de SELECT na tabela `couples` (estava aberta)
-- Bloqueia INSERT direto em `couples` (só via triggers SECURITY DEFINER)
-- Exige confirmação **mútua** de pareamento (ambos cônjuges declaram um ao outro)
-- Cria tabela `user_data` para sincronizar dados pessoais de oração entre dispositivos
-- Bloqueia DELETE direto em todas as tabelas
-
-**Passos:**
-
-1. Acesse https://supabase.com/dashboard/project/lfnvoiemdkpiwxwxhihr/sql/new
-2. Cole o conteúdo de `supabase-security-hardening.sql`
-3. Clique em **Run**
-
-## 5. ⚠️ Verificar políticas de senha
-
-No Supabase Dashboard → Authentication → Policies, ajuste o mínimo de senha para 8 caracteres se desejar maior segurança.
+O Security Advisor informa que a proteção via HaveIBeenPwned está desativada.
+Esse recurso exige o plano Supabase Pro. O frontend e o ambiente local já exigem
+no mínimo 8 caracteres; ao migrar para o plano Pro, ative também a proteção
+contra senhas vazadas no Auth.
